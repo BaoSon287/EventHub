@@ -15,11 +15,14 @@ All service responses follow this format:
 - `GET /api/auth/health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `GET /api/auth/me`
 
 ## User Service
 
 - `GET /api/users/health`
+- `POST /api/users`
 - `GET /api/users/{id}`
+- `GET /api/users/auth/{authUserId}`
 - `PUT /api/users/{id}`
 
 ## Event Service

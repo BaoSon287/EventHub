@@ -23,11 +23,27 @@ public class AuthUser {
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false)
+    private String fullName;
+
+    private String phone;
+
+    @Column(nullable = false)
     private String role;
+
+    private boolean enabled;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     @PrePersist
     void onCreate() {
         createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+        enabled = true;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

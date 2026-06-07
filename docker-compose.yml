@@ -53,6 +53,8 @@ services:
       SPRING_DATASOURCE_USERNAME: eventhub
       SPRING_DATASOURCE_PASSWORD: eventhub
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EVENTHUB_JWT_SECRET: eventhub-development-secret-key-change-me-32
+      EVENTHUB_JWT_EXPIRATION_MS: 86400000
     ports:
       - "8081:8081"
     depends_on:

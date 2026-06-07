@@ -18,7 +18,9 @@ spring:
               - PUT
               - DELETE
               - OPTIONS
-            allowedHeaders: "*"
+            allowedHeaders:
+              - Authorization
+              - Content-Type
       routes:
         - id: auth-service
           uri: lb://auth-service

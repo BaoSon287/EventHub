@@ -11,16 +11,20 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@Table(name = "user_profiles")
 public class UserProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long userId;
-    private String fullName;
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
+    private Long authUserId;
+    @Column(nullable = false, unique = true)
     private String email;
+    private String fullName;
     private String phone;
     private String avatarUrl;
+    @Column(length = 1000)
+    private String bio;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

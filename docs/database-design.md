@@ -17,17 +17,22 @@ Each service has its own PostgreSQL database to keep ownership boundaries clear.
 - `id`
 - `email`
 - `password`
+- `fullName`
+- `phone`
 - `role`
+- `enabled`
 - `createdAt`
+- `updatedAt`
 
 ## UserProfile
 
 - `id`
-- `userId`
+- `authUserId`
 - `fullName`
 - `email`
 - `phone`
 - `avatarUrl`
+- `bio`
 - `createdAt`
 - `updatedAt`
 

@@ -72,11 +72,52 @@ PostgreSQL initializes these databases automatically from `docker/postgres/init.
 
 ## Swagger URLs
 
-- Auth: http://localhost:8081/swagger-ui.html
-- User: http://localhost:8082/swagger-ui.html
+- Auth: http://localhost:8081/swagger-ui/index.html
+- User: http://localhost:8082/swagger-ui/index.html
 - Event: http://localhost:8083/swagger-ui.html
 - Booking: http://localhost:8084/swagger-ui.html
 - Notification: http://localhost:8085/swagger-ui.html
+
+## Authentication Flow
+
+1. User registers through the API Gateway.
+2. Auth Service stores the account in `auth_db`.
+3. Auth Service calls User Service to create the matching profile in `user_db`.
+4. User logs in with email and password.
+5. Auth Service returns a JWT access token.
+6. Frontend sends the JWT in the `Authorization` header.
+
+Register:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "123456",
+    "fullName": "Nguyen Van A",
+    "phone": "0123456789",
+    "role": "USER"
+  }'
+```
+
+Login:
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "123456"
+  }'
+```
+
+Current user:
+
+```bash
+curl -X GET http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
 
 ## Health Endpoints
 
