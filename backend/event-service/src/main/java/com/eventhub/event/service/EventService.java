@@ -5,7 +5,9 @@ import com.eventhub.common.exception.ResourceNotFoundException;
 import com.eventhub.event.dto.CreateEventRequest;
 import com.eventhub.event.dto.EventResponse;
 import com.eventhub.event.dto.EventSearchCriteria;
+import com.eventhub.event.dto.InternalEventResponse;
 import com.eventhub.event.dto.PageResponse;
+import com.eventhub.event.dto.TicketQuantityRequest;
 import com.eventhub.event.dto.UpdateEventRequest;
 import com.eventhub.event.entity.Event;
 import com.eventhub.event.entity.EventStatus;
@@ -19,6 +21,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
@@ -106,8 +109,40 @@ public class EventService {
         return toPageResponse(events);
     }
 
+    public InternalEventResponse findInternalById(Long id) {
+        return mapper.toInternalResponse(getEvent(id));
+    }
+
+    @Transactional
+    public InternalEventResponse reserveTickets(Long id, TicketQuantityRequest request) {
+        Event event = getEventForUpdate(id);
+        if (event.getStatus() != EventStatus.PUBLISHED) {
+            throw new BadRequestException("Only published events can be booked");
+        }
+        if (event.getAvailableTickets() < request.quantity()) {
+            throw new BadRequestException("Not enough tickets available");
+        }
+        event.setAvailableTickets(event.getAvailableTickets() - request.quantity());
+        return mapper.toInternalResponse(repository.save(event));
+    }
+
+    @Transactional
+    public InternalEventResponse releaseTickets(Long id, TicketQuantityRequest request) {
+        Event event = getEventForUpdate(id);
+        int restoredTickets = event.getAvailableTickets() + request.quantity();
+        if (restoredTickets > event.getTotalTickets()) {
+            throw new BadRequestException("availableTickets cannot be greater than totalTickets");
+        }
+        event.setAvailableTickets(restoredTickets);
+        return mapper.toInternalResponse(repository.save(event));
+    }
+
     private Event getEvent(Long id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+    }
+
+    private Event getEventForUpdate(Long id) {
+        return repository.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
     }
 
     private Pageable pageable(int page, int size, String sortBy, String sortDir) {

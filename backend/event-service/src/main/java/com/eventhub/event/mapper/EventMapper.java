@@ -2,6 +2,7 @@ package com.eventhub.event.mapper;
 
 import com.eventhub.event.dto.CreateEventRequest;
 import com.eventhub.event.dto.EventResponse;
+import com.eventhub.event.dto.InternalEventResponse;
 import com.eventhub.event.dto.UpdateEventRequest;
 import com.eventhub.event.entity.Event;
 import com.eventhub.event.entity.EventStatus;
@@ -68,6 +69,17 @@ public class EventMapper {
                 event.getStatus(),
                 event.getCreatedAt(),
                 event.getUpdatedAt()
+        );
+    }
+
+    public InternalEventResponse toInternalResponse(Event event) {
+        return new InternalEventResponse(
+                event.getId(),
+                event.getTitle(),
+                event.getPrice(),
+                event.getAvailableTickets(),
+                event.getStatus(),
+                event.getOrganizerId()
         );
     }
 }

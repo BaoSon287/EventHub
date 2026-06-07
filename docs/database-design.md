@@ -60,12 +60,18 @@ Each service has its own PostgreSQL database to keep ownership boundaries clear.
 ## Booking
 
 - `id`
+- `bookingCode`
 - `userId`
 - `eventId`
+- `eventTitle`
 - `quantity`
+- `ticketPrice`
 - `totalPrice`
 - `status`
+- `paymentStatus`
 - `createdAt`
+- `updatedAt`
+- `cancelledAt`
 
 ## Logical Relationships
 

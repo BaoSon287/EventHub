@@ -74,8 +74,8 @@ PostgreSQL initializes these databases automatically from `docker/postgres/init.
 
 - Auth: http://localhost:8081/swagger-ui/index.html
 - User: http://localhost:8082/swagger-ui/index.html
-- Event: http://localhost:8083/swagger-ui.html
-- Booking: http://localhost:8084/swagger-ui.html
+- Event: http://localhost:8083/swagger-ui/index.html
+- Booking: http://localhost:8084/swagger-ui/index.html
 - Notification: http://localhost:8085/swagger-ui.html
 
 ## Authentication Flow
@@ -190,16 +190,86 @@ curl -X PATCH http://localhost:8080/api/events/1/cancel \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
+## Booking Service
+
+Authenticated users can create bookings, list their own bookings, cancel bookings, and mark mock payment as paid. `ADMIN` users can view any user booking. `ORGANIZER` users can view bookings for events they own.
+
+Endpoints:
+
+- `GET /api/bookings/health`
+- `POST /api/bookings`
+- `GET /api/bookings/{id}`
+- `GET /api/bookings/me`
+- `GET /api/bookings/user/{userId}`
+- `GET /api/bookings/event/{eventId}`
+- `PATCH /api/bookings/{id}/cancel`
+- `PATCH /api/bookings/{id}/pay/mock`
+
+Booking flow:
+
+1. User sends a booking request with `eventId` and `quantity`.
+2. Booking Service reads `userId`, `email`, and `role` from JWT.
+3. Booking Service calls Event Service to load internal event data.
+4. Event Service checks published status and available tickets.
+5. Booking Service calls Event Service to reserve tickets.
+6. Event Service decreases `availableTickets` inside a transaction with a pessimistic database lock.
+7. Booking Service creates the booking and returns a `bookingCode`.
+8. When booking is cancelled, Booking Service calls Event Service to release tickets.
+
+Create booking:
+
+```bash
+curl -X POST http://localhost:8080/api/bookings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "eventId": 1,
+    "quantity": 2
+  }'
+```
+
+View my bookings:
+
+```bash
+curl -X GET "http://localhost:8080/api/bookings/me?page=0&size=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Cancel booking:
+
+```bash
+curl -X PATCH http://localhost:8080/api/bookings/1/cancel \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Mock payment:
+
+```bash
+curl -X PATCH http://localhost:8080/api/bookings/1/pay/mock \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Check event ticket count:
+
+```bash
+curl -X GET http://localhost:8080/api/events/1
+```
+
 ## Known Limitations
 
 - Event organizer display name currently uses the JWT email claim as `organizerName`; a later phase can resolve profile names from User Service.
+- Payment is mock-only; there is no real payment gateway yet.
+- Booking cancellation refunds are represented by `PaymentStatus.REFUNDED` only.
+- Event Service internal ticket endpoints are public inside the dev stack; production needs service-to-service authentication.
+- Booking creation reserves tickets before saving the booking, but there is no distributed transaction or Saga yet.
+- Booking confirmation notifications are not integrated yet.
 
 ## Roadmap
 
 - Implement production JWT signing and gateway authentication filter.
 - Add refresh tokens and role-based authorization.
 - Add event search, filtering, categories, and organizer workflows.
-- Add payment and ticket inventory consistency.
+- Add real payment service and Saga-based booking consistency.
 - Add notification providers for email and SMS.
 - Add frontend application and Figma-guided UI.
 - Add integration tests and CI/CD pipeline.
