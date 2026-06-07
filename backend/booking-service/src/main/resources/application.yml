@@ -1,0 +1,19 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: booking-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/booking_db}
+    username: ${SPRING_DATASOURCE_USERNAME:eventhub}
+    password: ${SPRING_DATASOURCE_PASSWORD:eventhub}
+  jpa:
+    hibernate:
+      ddl-auto: update
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
