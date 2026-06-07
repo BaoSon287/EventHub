@@ -127,6 +127,73 @@ curl -X GET http://localhost:8080/api/auth/me \
 - http://localhost:8084/api/bookings/health
 - http://localhost:8085/api/notifications/health
 
+## Event Service
+
+Public users can list and view published events. `ORGANIZER` users can create and manage their own events. `ADMIN` users can manage all events.
+
+Endpoints:
+
+- `GET /api/events`
+- `GET /api/events/{id}`
+- `POST /api/events`
+- `PUT /api/events/{id}`
+- `DELETE /api/events/{id}`
+- `GET /api/events/organizer/{organizerId}`
+- `PATCH /api/events/{id}/publish`
+- `PATCH /api/events/{id}/cancel`
+
+List events:
+
+```bash
+curl -X GET "http://localhost:8080/api/events?page=0&size=10"
+```
+
+Search events:
+
+```bash
+curl -X GET "http://localhost:8080/api/events?keyword=tech&city=Ha%20Noi&sortBy=startTime&sortDir=asc"
+```
+
+Create event:
+
+```bash
+curl -X POST http://localhost:8080/api/events \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "title": "Tech Conference 2026",
+    "description": "A conference for developers",
+    "category": "Technology",
+    "location": "National Convention Center",
+    "address": "57 Pham Hung",
+    "city": "Ha Noi",
+    "startTime": "2026-08-10T09:00:00",
+    "endTime": "2026-08-10T17:00:00",
+    "totalTickets": 200,
+    "price": 199000,
+    "imageUrl": "https://example.com/event.jpg",
+    "status": "PUBLISHED"
+  }'
+```
+
+Publish event:
+
+```bash
+curl -X PATCH http://localhost:8080/api/events/1/publish \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Cancel event:
+
+```bash
+curl -X PATCH http://localhost:8080/api/events/1/cancel \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Known Limitations
+
+- Event organizer display name currently uses the JWT email claim as `organizerName`; a later phase can resolve profile names from User Service.
+
 ## Roadmap
 
 - Implement production JWT signing and gateway authentication filter.

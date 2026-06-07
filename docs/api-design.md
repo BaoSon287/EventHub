@@ -28,11 +28,14 @@ All service responses follow this format:
 ## Event Service
 
 - `GET /api/events/health`
-- `GET /api/events`
+- `GET /api/events` with `keyword`, `category`, `city`, `minPrice`, `maxPrice`, `startDate`, `endDate`, `status`, `page`, `size`, `sortBy`, `sortDir`
 - `GET /api/events/{id}`
-- `POST /api/events`
-- `PUT /api/events/{id}`
-- `DELETE /api/events/{id}`
+- `POST /api/events` for ORGANIZER or ADMIN
+- `PUT /api/events/{id}` for ADMIN or owning organizer
+- `DELETE /api/events/{id}` soft-cancels the event
+- `GET /api/events/organizer/{organizerId}`
+- `PATCH /api/events/{id}/publish`
+- `PATCH /api/events/{id}/cancel`
 
 ## Booking Service
 

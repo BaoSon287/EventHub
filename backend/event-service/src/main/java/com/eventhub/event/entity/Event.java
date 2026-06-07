@@ -17,18 +17,29 @@ public class Event {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 150)
     private String title;
+
     @Column(length = 2000)
     private String description;
+
+    private String category;
     private String location;
+    private String address;
+    private String city;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private Integer totalTickets;
     private Integer availableTickets;
     private BigDecimal price;
+    private String imageUrl;
     private Long organizerId;
+    private String organizerName;
+
     @Enumerated(EnumType.STRING)
     private EventStatus status;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -38,6 +49,9 @@ public class Event {
         updatedAt = createdAt;
         if (status == null) {
             status = EventStatus.DRAFT;
+        }
+        if (availableTickets == null && totalTickets != null) {
+            availableTickets = totalTickets;
         }
     }
 

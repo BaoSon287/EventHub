@@ -59,7 +59,7 @@ public class JwtService {
     private SecretKey createKey(String secret) {
         try {
             return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
-        } catch (IllegalArgumentException ignored) {
+        } catch (RuntimeException ignored) {
             return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         }
     }
