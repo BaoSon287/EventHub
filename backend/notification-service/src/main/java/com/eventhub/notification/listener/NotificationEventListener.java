@@ -3,6 +3,8 @@ package com.eventhub.notification.listener;
 import com.eventhub.notification.dto.BookingCancelledEvent;
 import com.eventhub.notification.dto.BookingCreatedEvent;
 import com.eventhub.notification.dto.NotificationResponse;
+import com.eventhub.notification.dto.PaymentFailedEvent;
+import com.eventhub.notification.dto.PaymentSucceededEvent;
 import com.eventhub.notification.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,28 @@ public class NotificationEventListener {
             log.info("Saved booking.cancelled notification id={} for bookingCode={}", response.id(), event.bookingCode());
         } catch (Exception ex) {
             log.error("Failed to process booking.cancelled event for bookingCode={}", event.bookingCode(), ex);
+        }
+    }
+
+    @RabbitListener(queues = "${eventhub.rabbitmq.queues.payment-succeeded}")
+    public void handlePaymentSucceededEvent(PaymentSucceededEvent event) {
+        try {
+            log.info("Received payment.succeeded event for paymentCode={}", event.paymentCode());
+            NotificationResponse response = notificationService.createPaymentSucceededNotification(event);
+            log.info("Saved payment.succeeded notification id={} for paymentCode={}", response.id(), event.paymentCode());
+        } catch (Exception ex) {
+            log.error("Failed to process payment.succeeded event for paymentCode={}", event.paymentCode(), ex);
+        }
+    }
+
+    @RabbitListener(queues = "${eventhub.rabbitmq.queues.payment-failed}")
+    public void handlePaymentFailedEvent(PaymentFailedEvent event) {
+        try {
+            log.info("Received payment.failed event for paymentCode={}", event.paymentCode());
+            NotificationResponse response = notificationService.createPaymentFailedNotification(event);
+            log.info("Saved payment.failed notification id={} for paymentCode={}", response.id(), event.paymentCode());
+        } catch (Exception ex) {
+            log.error("Failed to process payment.failed event for paymentCode={}", event.paymentCode(), ex);
         }
     }
 }

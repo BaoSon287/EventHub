@@ -1,10 +1,11 @@
 server:
-  port: 8085
+  port: 8086
+
 spring:
   application:
-    name: notification-service
+    name: payment-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/notification_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/payment_db}
     username: ${SPRING_DATASOURCE_USERNAME:eventhub}
     password: ${SPRING_DATASOURCE_PASSWORD:eventhub}
   rabbitmq:
@@ -15,25 +16,24 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
 eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
 eventhub:
   jwt:
     secret: ${EVENTHUB_JWT_SECRET:eventhub-development-secret-key-change-me-32}
   rabbitmq:
     exchange: eventhub.exchange
-    queues:
-      booking-created: notification.booking.created.queue
-      booking-cancelled: notification.booking.cancelled.queue
-      payment-succeeded: notification.payment.succeeded.queue
-      payment-failed: notification.payment.failed.queue
     routing-keys:
-      booking-created: booking.created
-      booking-cancelled: booking.cancelled
       payment-succeeded: payment.succeeded
       payment-failed: payment.failed

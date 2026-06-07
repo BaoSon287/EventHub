@@ -6,7 +6,9 @@ import com.eventhub.booking.dto.BookingResponse;
 import com.eventhub.booking.dto.CreateBookingRequest;
 import com.eventhub.booking.dto.EventApiResponse;
 import com.eventhub.booking.dto.InternalEventResponse;
+import com.eventhub.booking.dto.InternalBookingResponse;
 import com.eventhub.booking.dto.TicketQuantityRequest;
+import com.eventhub.booking.dto.UpdateBookingPaymentStatusRequest;
 import com.eventhub.booking.entity.Booking;
 import com.eventhub.booking.enums.BookingStatus;
 import com.eventhub.booking.enums.PaymentStatus;
@@ -131,8 +133,54 @@ public class BookingService {
         return mapper.toResponse(repository.save(booking));
     }
 
+    public InternalBookingResponse findInternalBooking(Long id) {
+        return toInternalResponse(getBooking(id));
+    }
+
+    @Transactional
+    public InternalBookingResponse updatePaymentStatus(Long id, UpdateBookingPaymentStatusRequest request) {
+        Booking booking = getBooking(id);
+        PaymentStatus target = request.paymentStatus();
+        PaymentStatus current = booking.getPaymentStatus();
+
+        if (booking.getStatus() == BookingStatus.CANCELLED && target == PaymentStatus.PAID) {
+            throw new BadRequestException("Cancelled booking cannot be marked as paid");
+        }
+        if (current == PaymentStatus.PAID && target == PaymentStatus.PAID) {
+            throw new BadRequestException("Booking is already paid");
+        }
+        if (current == PaymentStatus.PAID && target == PaymentStatus.UNPAID) {
+            throw new BadRequestException("Paid booking cannot be reverted to unpaid");
+        }
+        if (!isAllowedPaymentTransition(current, target)) {
+            throw new BadRequestException("Payment status transition is not allowed");
+        }
+
+        booking.setPaymentStatus(target);
+        return toInternalResponse(repository.save(booking));
+    }
+
     private Booking getBooking(Long id) {
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+    }
+
+    private boolean isAllowedPaymentTransition(PaymentStatus current, PaymentStatus target) {
+        return (current == PaymentStatus.UNPAID && (target == PaymentStatus.PAID || target == PaymentStatus.FAILED))
+                || (current == PaymentStatus.FAILED && (target == PaymentStatus.PAID || target == PaymentStatus.FAILED));
+    }
+
+    private InternalBookingResponse toInternalResponse(Booking booking) {
+        return new InternalBookingResponse(
+                booking.getId(),
+                booking.getBookingCode(),
+                booking.getUserId(),
+                booking.getEventId(),
+                booking.getEventTitle(),
+                booking.getQuantity(),
+                booking.getTotalPrice(),
+                booking.getStatus(),
+                booking.getPaymentStatus()
+        );
     }
 
     private InternalEventResponse fetchEvent(Long eventId) {

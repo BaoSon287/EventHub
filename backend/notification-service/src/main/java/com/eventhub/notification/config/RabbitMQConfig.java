@@ -2,6 +2,8 @@ package com.eventhub.notification.config;
 
 import com.eventhub.notification.dto.BookingCancelledEvent;
 import com.eventhub.notification.dto.BookingCreatedEvent;
+import com.eventhub.notification.dto.PaymentFailedEvent;
+import com.eventhub.notification.dto.PaymentSucceededEvent;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
@@ -34,6 +36,16 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    Queue paymentSucceededQueue(@Value("${eventhub.rabbitmq.queues.payment-succeeded}") String queueName) {
+        return new Queue(queueName, true);
+    }
+
+    @Bean
+    Queue paymentFailedQueue(@Value("${eventhub.rabbitmq.queues.payment-failed}") String queueName) {
+        return new Queue(queueName, true);
+    }
+
+    @Bean
     Binding bookingCreatedBinding(
             @Qualifier("bookingCreatedQueue") Queue bookingCreatedQueue,
             @Qualifier("eventHubExchange") TopicExchange eventHubExchange,
@@ -52,12 +64,32 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    Binding paymentSucceededBinding(
+            @Qualifier("paymentSucceededQueue") Queue paymentSucceededQueue,
+            @Qualifier("eventHubExchange") TopicExchange eventHubExchange,
+            @Value("${eventhub.rabbitmq.routing-keys.payment-succeeded}") String routingKey
+    ) {
+        return BindingBuilder.bind(paymentSucceededQueue).to(eventHubExchange).with(routingKey);
+    }
+
+    @Bean
+    Binding paymentFailedBinding(
+            @Qualifier("paymentFailedQueue") Queue paymentFailedQueue,
+            @Qualifier("eventHubExchange") TopicExchange eventHubExchange,
+            @Value("${eventhub.rabbitmq.routing-keys.payment-failed}") String routingKey
+    ) {
+        return BindingBuilder.bind(paymentFailedQueue).to(eventHubExchange).with(routingKey);
+    }
+
+    @Bean
     MessageConverter jacksonMessageConverter() {
         Jackson2JsonMessageConverter converter = new Jackson2JsonMessageConverter();
         DefaultClassMapper classMapper = new DefaultClassMapper();
         classMapper.setIdClassMapping(Map.of(
                 "booking.created.event", BookingCreatedEvent.class,
-                "booking.cancelled.event", BookingCancelledEvent.class
+                "booking.cancelled.event", BookingCancelledEvent.class,
+                "payment.succeeded.event", PaymentSucceededEvent.class,
+                "payment.failed.event", PaymentFailedEvent.class
         ));
         classMapper.setTrustedPackages("com.eventhub.notification.dto");
         converter.setClassMapper(classMapper);

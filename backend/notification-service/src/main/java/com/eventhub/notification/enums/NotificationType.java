@@ -4,5 +4,6 @@ public enum NotificationType {
     BOOKING_CREATED,
     BOOKING_CANCELLED,
     PAYMENT_SUCCESS,
+    PAYMENT_FAILED,
     SYSTEM
 }

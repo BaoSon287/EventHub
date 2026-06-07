@@ -1,9 +1,10 @@
-package com.eventhub.booking.config;
+package com.eventhub.payment.config;
 
-import com.eventhub.booking.security.JwtAuthenticationEntryPoint;
-import com.eventhub.booking.security.JwtAuthenticationFilter;
+import com.eventhub.payment.security.JwtAuthenticationEntryPoint;
+import com.eventhub.payment.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,10 +26,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/bookings/health").permitAll()
-                        .requestMatchers("/api/bookings/internal/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/payments/health").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/bookings/**").authenticated()
+                        .requestMatchers("/api/payments/**").authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

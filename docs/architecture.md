@@ -35,6 +35,22 @@ Booking Service
 
 Notification Service consumes the events, stores notification records, and logs mock email output. This asynchronous flow keeps booking operations available even when notification processing is temporarily unavailable.
 
+## Payment Flow
+
+Payment Service owns payment transaction records and coordinates a simple payment Saga:
+
+```text
+Frontend
+  -> API Gateway
+  -> Payment Service
+  -> Booking Service internal API
+  -> RabbitMQ exchange: eventhub.exchange
+  -> notification.payment.succeeded.queue / notification.payment.failed.queue
+  -> Notification Service
+```
+
+Payment Service stores transactions in `payment_db`. Booking Service remains the owner of booking state and exposes internal dev endpoints for payment status updates. Payment Service publishes payment events after mock success or failure so Notification Service can create user notifications.
+
 ## Eureka
 
 `discovery-server` runs Eureka on port `8761`. Backend services register themselves with Eureka at startup. The gateway then resolves service names through Eureka instead of hard-coded host and port targets.
@@ -50,6 +66,7 @@ Notification Service consumes the events, stores notification records, and logs 
 | event-service | 8083 | Event lifecycle and ticket counts |
 | booking-service | 8084 | Booking creation and user booking lookup |
 | notification-service | 8085 | Notification endpoints and email logging |
+| payment-service | 8086 | Mock payment transactions and payment events |
 
 ## Shared Code
 
@@ -59,6 +76,7 @@ Notification Service consumes the events, stores notification records, and logs 
 
 - Event internal endpoints are public in the dev stack and need service-to-service authentication for production.
 - Booking and ticket reservation are not wrapped in a distributed transaction yet.
+- Payment workflow is a simple Saga and does not have a full Outbox Pattern or compensation workflow yet.
 - Notification is still mock/log level for booking confirmations.
 - RabbitMQ retry and dead-letter queues are not configured yet.
 - Integration event DTOs are currently duplicated between services.

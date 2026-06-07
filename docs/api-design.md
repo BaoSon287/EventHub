@@ -50,8 +50,24 @@ All service responses follow this format:
 - `GET /api/bookings/event/{eventId}` with `page`, `size`, `status`
 - `PATCH /api/bookings/{id}/cancel` cancels a booking and releases tickets
 - `PATCH /api/bookings/{id}/pay/mock` marks mock payment as paid
+- `GET /api/bookings/internal/{bookingId}` returns booking data for payment-service
+- `PATCH /api/bookings/internal/{bookingId}/payment-status` updates booking payment status from payment-service
 
 Booking Service reads `userId`, `email`, and `role` from JWT. It never accepts `ticketPrice` or `totalPrice` from the frontend.
+
+## Payment Service
+
+- `GET /api/payments/health`
+- `POST /api/payments` creates a pending payment for the current JWT user
+- `GET /api/payments/{id}`
+- `GET /api/payments/code/{paymentCode}`
+- `GET /api/payments/me` with `page`, `size`, `status`
+- `GET /api/payments/booking/{bookingId}`
+- `PATCH /api/payments/{id}/mock-success`
+- `PATCH /api/payments/{id}/mock-fail`
+- `PATCH /api/payments/{id}/cancel`
+
+Payment Service reads `userId`, `email`, and `role` from JWT. It calls Booking Service internal APIs to validate bookings and update booking payment status.
 
 ## Notification Service
 
@@ -61,4 +77,4 @@ Booking Service reads `userId`, `email`, and `role` from JWT. It never accepts `
 - `PATCH /api/notifications/{id}/read`
 - `POST /api/notifications/email`
 
-Booking-created and booking-cancelled notifications are produced asynchronously from RabbitMQ messages published by Booking Service.
+Booking-created and booking-cancelled notifications are produced asynchronously from RabbitMQ messages published by Booking Service. Payment-success and payment-failed notifications are produced asynchronously from RabbitMQ messages published by Payment Service.

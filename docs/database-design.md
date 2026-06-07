@@ -9,6 +9,7 @@ Each service has its own PostgreSQL database to keep ownership boundaries clear.
 - `event_db`
 - `booking_db`
 - `notification_db`
+- `payment_db`
 
 ## Main Entities
 
@@ -89,6 +90,24 @@ Each service has its own PostgreSQL database to keep ownership boundaries clear.
 - `sentAt`
 - `readAt`
 
+## PaymentTransaction
+
+- `id`
+- `paymentCode`
+- `bookingId`
+- `bookingCode`
+- `userId`
+- `amount`
+- `method`
+- `status`
+- `provider`
+- `providerTransactionId`
+- `failureReason`
+- `createdAt`
+- `updatedAt`
+- `paidAt`
+- `failedAt`
+
 ## Logical Relationships
 
 - A registered auth user can own one user profile.
@@ -96,4 +115,6 @@ Each service has its own PostgreSQL database to keep ownership boundaries clear.
 - A user can make many bookings through `Booking.userId`.
 - An event can have many bookings through `Booking.eventId`.
 - A user can have many notifications through `Notification.userId`.
+- A user can have many payment transactions through `PaymentTransaction.userId`.
+- A booking can have payment transactions through `PaymentTransaction.bookingId`, while Booking Service remains the owner of booking data.
 - Cross-service relationships are stored as IDs, not foreign keys, because each service owns its database.

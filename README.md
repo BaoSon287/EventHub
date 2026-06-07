@@ -34,6 +34,7 @@ Frontend clients call the API Gateway on port `8080`. The gateway routes request
 | event-service | 8083 | event_db | Event CRUD |
 | booking-service | 8084 | booking_db | Booking creation and lookup |
 | notification-service | 8085 | notification_db | Notification endpoints, console email logging |
+| payment-service | 8086 | payment_db | Mock payment transaction management |
 | rabbitmq | 5672 | - | Asynchronous event broker |
 | rabbitmq-management | 15672 | - | RabbitMQ management UI |
 
@@ -44,6 +45,7 @@ Frontend clients call the API Gateway on port `8080`. The gateway routes request
 - `/api/events/**` -> `event-service`
 - `/api/bookings/**` -> `booking-service`
 - `/api/notifications/**` -> `notification-service`
+- `/api/payments/**` -> `payment-service`
 
 ## Run Locally
 
@@ -58,6 +60,7 @@ mvn -pl backend/user-service spring-boot:run
 mvn -pl backend/event-service spring-boot:run
 mvn -pl backend/booking-service spring-boot:run
 mvn -pl backend/notification-service spring-boot:run
+mvn -pl backend/payment-service spring-boot:run
 ```
 
 Default local database credentials are `eventhub/eventhub`.
@@ -71,7 +74,7 @@ mvn clean package -DskipTests
 docker compose up --build
 ```
 
-PostgreSQL initializes these databases automatically from `docker/postgres/init.sql`: `auth_db`, `user_db`, `event_db`, `booking_db`, and `notification_db`.
+PostgreSQL initializes these databases automatically from `docker/postgres/init.sql`: `auth_db`, `user_db`, `event_db`, `booking_db`, `notification_db`, and `payment_db`.
 
 RabbitMQ Management UI is available at http://localhost:15672 with username `eventhub` and password `eventhub`.
 
@@ -82,6 +85,7 @@ RabbitMQ Management UI is available at http://localhost:15672 with username `eve
 - Event: http://localhost:8083/swagger-ui/index.html
 - Booking: http://localhost:8084/swagger-ui/index.html
 - Notification: http://localhost:8085/swagger-ui.html
+- Payment: http://localhost:8086/swagger-ui.html
 
 ## Authentication Flow
 
@@ -131,6 +135,7 @@ curl -X GET http://localhost:8080/api/auth/me \
 - http://localhost:8083/api/events/health
 - http://localhost:8084/api/bookings/health
 - http://localhost:8085/api/notifications/health
+- http://localhost:8086/api/payments/health
 
 ## Asynchronous Communication With RabbitMQ
 
@@ -143,6 +148,15 @@ Booking Service does not call Notification Service directly. After a booking is 
 - Queue: `notification.booking.cancelled.queue`
 
 Notification Service consumes those messages, stores a notification in `notification_db`, and logs a mock email to the console. This reduces coupling between services: if Notification Service is temporarily down, Booking Service can still complete the booking flow and RabbitMQ can hold queued messages.
+
+Payment Service also publishes payment events through RabbitMQ:
+
+- Routing key: `payment.succeeded`
+- Routing key: `payment.failed`
+- Queue: `notification.payment.succeeded.queue`
+- Queue: `notification.payment.failed.queue`
+
+Notification Service consumes these events and creates payment success or failure notifications.
 
 ## Event Service
 
@@ -316,13 +330,89 @@ curl -X PATCH http://localhost:8080/api/notifications/1/read \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
+## Payment Flow
+
+Payment Service manages mock payment transactions separately from Booking Service.
+
+1. User creates a booking.
+2. Booking starts with `paymentStatus = UNPAID`.
+3. User creates a payment transaction for that booking.
+4. Payment Service stores a `PENDING` transaction in `payment_db`.
+5. User calls mock success or mock fail.
+6. Payment Service updates the transaction to `SUCCESS` or `FAILED`.
+7. Payment Service calls Booking Service internal API to update booking `paymentStatus`.
+8. Payment Service publishes `payment.succeeded` or `payment.failed` through RabbitMQ.
+9. Notification Service consumes the event and creates a notification.
+
+Endpoints:
+
+- `GET /api/payments/health`
+- `POST /api/payments`
+- `GET /api/payments/{id}`
+- `GET /api/payments/code/{paymentCode}`
+- `GET /api/payments/me`
+- `GET /api/payments/booking/{bookingId}`
+- `PATCH /api/payments/{id}/mock-success`
+- `PATCH /api/payments/{id}/mock-fail`
+- `PATCH /api/payments/{id}/cancel`
+
+Health:
+
+```bash
+curl -X GET http://localhost:8080/api/payments/health
+```
+
+Create payment:
+
+```bash
+curl -X POST http://localhost:8080/api/payments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "bookingId": 1,
+    "method": "MOCK"
+  }'
+```
+
+View my payments:
+
+```bash
+curl -X GET "http://localhost:8080/api/payments/me?page=0&size=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Mock payment success:
+
+```bash
+curl -X PATCH http://localhost:8080/api/payments/1/mock-success \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Mock payment fail:
+
+```bash
+curl -X PATCH http://localhost:8080/api/payments/1/mock-fail \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "failureReason": "Insufficient balance"
+  }'
+```
+
+## Simple Saga Pattern
+
+Payment Service coordinates the mock payment workflow while Booking Service and Payment Service keep separate databases. Payment Service calls Booking Service through an internal API and publishes payment events to RabbitMQ. This is a simple Saga-style workflow for local development, not a complete distributed transaction implementation.
+
 ## Known Limitations
 
 - Event organizer display name currently uses the JWT email claim as `organizerName`; a later phase can resolve profile names from User Service.
 - Payment is mock-only; there is no real payment gateway yet.
+- Payment Service does not integrate VNPay, Stripe, or any real provider yet.
 - Booking cancellation refunds are represented by `PaymentStatus.REFUNDED` only.
 - Event Service internal ticket endpoints are public inside the dev stack; production needs service-to-service authentication.
-- Booking creation reserves tickets before saving the booking, but there is no distributed transaction or Saga yet.
+- Booking Service internal payment endpoints are public inside the dev stack; production needs service-to-service authentication.
+- Booking and payment workflows do not have a production-grade distributed transaction or Saga implementation yet.
+- The payment workflow has no Outbox Pattern or full compensation mechanism yet.
 - Email delivery is mock/log-only and does not send real email yet.
 - RabbitMQ retry and dead-letter queues are not configured yet.
 - Integration event DTOs are duplicated between Booking Service and Notification Service; they can move to `common-lib` later.

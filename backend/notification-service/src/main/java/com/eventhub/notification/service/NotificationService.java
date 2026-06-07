@@ -6,6 +6,8 @@ import com.eventhub.notification.dto.BookingCreatedEvent;
 import com.eventhub.notification.dto.MockEmailRequest;
 import com.eventhub.notification.dto.NotificationPageResponse;
 import com.eventhub.notification.dto.NotificationResponse;
+import com.eventhub.notification.dto.PaymentFailedEvent;
+import com.eventhub.notification.dto.PaymentSucceededEvent;
 import com.eventhub.notification.entity.Notification;
 import com.eventhub.notification.enums.NotificationStatus;
 import com.eventhub.notification.enums.NotificationType;
@@ -67,6 +69,45 @@ public class NotificationService {
                 .sentAt(LocalDateTime.now())
                 .build());
         logMockEmail(event.userEmail(), "Booking cancelled", content);
+        return mapper.toResponse(notification);
+    }
+
+    @Transactional
+    public NotificationResponse createPaymentSucceededNotification(PaymentSucceededEvent event) {
+        String content = "Your payment " + event.paymentCode() + " for booking " + event.bookingCode() + " has been completed successfully.";
+        Notification notification = repository.save(Notification.builder()
+                .userId(event.userId())
+                .recipientEmail(event.userEmail())
+                .title("Payment successful")
+                .content(content)
+                .type(NotificationType.PAYMENT_SUCCESS)
+                .status(NotificationStatus.SENT)
+                .sourceService("payment-service")
+                .sourceEvent("payment.succeeded")
+                .referenceId(event.paymentCode())
+                .sentAt(LocalDateTime.now())
+                .build());
+        logMockEmail(event.userEmail(), "Payment successful", content);
+        return mapper.toResponse(notification);
+    }
+
+    @Transactional
+    public NotificationResponse createPaymentFailedNotification(PaymentFailedEvent event) {
+        String content = "Your payment " + event.paymentCode() + " for booking " + event.bookingCode()
+                + " failed. Reason: " + event.failureReason();
+        Notification notification = repository.save(Notification.builder()
+                .userId(event.userId())
+                .recipientEmail(event.userEmail())
+                .title("Payment failed")
+                .content(content)
+                .type(NotificationType.PAYMENT_FAILED)
+                .status(NotificationStatus.SENT)
+                .sourceService("payment-service")
+                .sourceEvent("payment.failed")
+                .referenceId(event.paymentCode())
+                .sentAt(LocalDateTime.now())
+                .build());
+        logMockEmail(event.userEmail(), "Payment failed", content);
         return mapper.toResponse(notification);
     }
 
