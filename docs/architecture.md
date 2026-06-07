@@ -20,6 +20,21 @@ EventHub uses a microservices architecture with one service per major business c
 
 Event Service prevents overselling by reserving tickets inside a transaction with a pessimistic database lock. Booking Service owns the booking order state; Event Service owns the ticket inventory state.
 
+## Notification Flow
+
+Booking Service publishes integration events instead of calling Notification Service directly:
+
+```text
+Booking Service
+  -> publish booking.created / booking.cancelled
+  -> RabbitMQ exchange: eventhub.exchange
+  -> notification.booking.created.queue / notification.booking.cancelled.queue
+  -> Notification Service
+  -> notification_db
+```
+
+Notification Service consumes the events, stores notification records, and logs mock email output. This asynchronous flow keeps booking operations available even when notification processing is temporarily unavailable.
+
 ## Eureka
 
 `discovery-server` runs Eureka on port `8761`. Backend services register themselves with Eureka at startup. The gateway then resolves service names through Eureka instead of hard-coded host and port targets.
@@ -45,3 +60,5 @@ Event Service prevents overselling by reserving tickets inside a transaction wit
 - Event internal endpoints are public in the dev stack and need service-to-service authentication for production.
 - Booking and ticket reservation are not wrapped in a distributed transaction yet.
 - Notification is still mock/log level for booking confirmations.
+- RabbitMQ retry and dead-letter queues are not configured yet.
+- Integration event DTOs are currently duplicated between services.

@@ -7,6 +7,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/booking_db}
     username: ${SPRING_DATASOURCE_USERNAME:eventhub}
     password: ${SPRING_DATASOURCE_PASSWORD:eventhub}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:eventhub}
+    password: ${SPRING_RABBITMQ_PASSWORD:eventhub}
   jpa:
     hibernate:
       ddl-auto: update
@@ -25,3 +30,11 @@ springdoc:
 eventhub:
   jwt:
     secret: ${EVENTHUB_JWT_SECRET:eventhub-development-secret-key-change-me-32}
+  rabbitmq:
+    exchange: eventhub.exchange
+    queues:
+      booking-created: notification.booking.created.queue
+      booking-cancelled: notification.booking.cancelled.queue
+    routing-keys:
+      booking-created: booking.created
+      booking-cancelled: booking.cancelled

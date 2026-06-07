@@ -11,6 +11,7 @@ import com.eventhub.booking.entity.Booking;
 import com.eventhub.booking.enums.BookingStatus;
 import com.eventhub.booking.enums.PaymentStatus;
 import com.eventhub.booking.mapper.BookingMapper;
+import com.eventhub.booking.messaging.BookingEventPublisher;
 import com.eventhub.booking.repository.BookingRepository;
 import com.eventhub.booking.security.CustomUserPrincipal;
 import com.eventhub.common.exception.BadRequestException;
@@ -31,11 +32,18 @@ public class BookingService {
     private final BookingRepository repository;
     private final EventServiceClient eventServiceClient;
     private final BookingMapper mapper;
+    private final BookingEventPublisher eventPublisher;
 
-    public BookingService(BookingRepository repository, EventServiceClient eventServiceClient, BookingMapper mapper) {
+    public BookingService(
+            BookingRepository repository,
+            EventServiceClient eventServiceClient,
+            BookingMapper mapper,
+            BookingEventPublisher eventPublisher
+    ) {
         this.repository = repository;
         this.eventServiceClient = eventServiceClient;
         this.mapper = mapper;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -54,6 +62,7 @@ public class BookingService {
                 .status(BookingStatus.CONFIRMED)
                 .paymentStatus(PaymentStatus.UNPAID)
                 .build());
+        eventPublisher.publishBookingCreated(booking, principal);
         return mapper.toResponse(booking);
     }
 
@@ -106,7 +115,9 @@ public class BookingService {
         if (booking.getPaymentStatus() == PaymentStatus.PAID) {
             booking.setPaymentStatus(PaymentStatus.REFUNDED);
         }
-        return mapper.toResponse(repository.save(booking));
+        Booking saved = repository.save(booking);
+        eventPublisher.publishBookingCancelled(saved, principal);
+        return mapper.toResponse(saved);
     }
 
     @Transactional

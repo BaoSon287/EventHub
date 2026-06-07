@@ -56,4 +56,9 @@ Booking Service reads `userId`, `email`, and `role` from JWT. It never accepts `
 ## Notification Service
 
 - `GET /api/notifications/health`
+- `GET /api/notifications/user/{userId}` with `page`, `size`, `status`, `type`
+- `GET /api/notifications/{id}`
+- `PATCH /api/notifications/{id}/read`
 - `POST /api/notifications/email`
+
+Booking-created and booking-cancelled notifications are produced asynchronously from RabbitMQ messages published by Booking Service.

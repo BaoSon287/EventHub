@@ -14,6 +14,7 @@ EventHub is a Java Spring Boot microservices skeleton for creating, managing, an
 - PostgreSQL
 - Maven multi-module build
 - Docker Compose
+- RabbitMQ
 - Swagger/OpenAPI
 - Lombok
 - Validation
@@ -33,6 +34,8 @@ Frontend clients call the API Gateway on port `8080`. The gateway routes request
 | event-service | 8083 | event_db | Event CRUD |
 | booking-service | 8084 | booking_db | Booking creation and lookup |
 | notification-service | 8085 | notification_db | Notification endpoints, console email logging |
+| rabbitmq | 5672 | - | Asynchronous event broker |
+| rabbitmq-management | 15672 | - | RabbitMQ management UI |
 
 ## API Gateway Routes
 
@@ -69,6 +72,8 @@ docker compose up --build
 ```
 
 PostgreSQL initializes these databases automatically from `docker/postgres/init.sql`: `auth_db`, `user_db`, `event_db`, `booking_db`, and `notification_db`.
+
+RabbitMQ Management UI is available at http://localhost:15672 with username `eventhub` and password `eventhub`.
 
 ## Swagger URLs
 
@@ -126,6 +131,18 @@ curl -X GET http://localhost:8080/api/auth/me \
 - http://localhost:8083/api/events/health
 - http://localhost:8084/api/bookings/health
 - http://localhost:8085/api/notifications/health
+
+## Asynchronous Communication With RabbitMQ
+
+Booking Service does not call Notification Service directly. After a booking is created or cancelled, Booking Service publishes an integration event to RabbitMQ:
+
+- Exchange: `eventhub.exchange`
+- Routing key: `booking.created`
+- Routing key: `booking.cancelled`
+- Queue: `notification.booking.created.queue`
+- Queue: `notification.booking.cancelled.queue`
+
+Notification Service consumes those messages, stores a notification in `notification_db`, and logs a mock email to the console. This reduces coupling between services: if Notification Service is temporarily down, Booking Service can still complete the booking flow and RabbitMQ can hold queued messages.
 
 ## Event Service
 
@@ -255,6 +272,50 @@ Check event ticket count:
 curl -X GET http://localhost:8080/api/events/1
 ```
 
+## Notification Service
+
+Notification Service consumes booking events from RabbitMQ and stores user notifications. Email delivery is currently mocked by logging to the console.
+
+Endpoints:
+
+- `GET /api/notifications/health`
+- `GET /api/notifications/user/{userId}`
+- `GET /api/notifications/{id}`
+- `PATCH /api/notifications/{id}/read`
+- `POST /api/notifications/email`
+
+Health:
+
+```bash
+curl -X GET http://localhost:8080/api/notifications/health
+```
+
+Send mock email:
+
+```bash
+curl -X POST http://localhost:8080/api/notifications/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "user@example.com",
+    "subject": "Test EventHub Notification",
+    "content": "Hello from EventHub"
+  }'
+```
+
+View notifications:
+
+```bash
+curl -X GET "http://localhost:8080/api/notifications/user/1?page=0&size=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Mark as read:
+
+```bash
+curl -X PATCH http://localhost:8080/api/notifications/1/read \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
 ## Known Limitations
 
 - Event organizer display name currently uses the JWT email claim as `organizerName`; a later phase can resolve profile names from User Service.
@@ -262,7 +323,10 @@ curl -X GET http://localhost:8080/api/events/1
 - Booking cancellation refunds are represented by `PaymentStatus.REFUNDED` only.
 - Event Service internal ticket endpoints are public inside the dev stack; production needs service-to-service authentication.
 - Booking creation reserves tickets before saving the booking, but there is no distributed transaction or Saga yet.
-- Booking confirmation notifications are not integrated yet.
+- Email delivery is mock/log-only and does not send real email yet.
+- RabbitMQ retry and dead-letter queues are not configured yet.
+- Integration event DTOs are duplicated between Booking Service and Notification Service; they can move to `common-lib` later.
+- `POST /api/notifications/email` is public for local development.
 
 ## Roadmap
 

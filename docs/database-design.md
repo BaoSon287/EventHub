@@ -73,10 +73,27 @@ Each service has its own PostgreSQL database to keep ownership boundaries clear.
 - `updatedAt`
 - `cancelledAt`
 
+## Notification
+
+- `id`
+- `userId`
+- `recipientEmail`
+- `title`
+- `content`
+- `type`
+- `status`
+- `sourceService`
+- `sourceEvent`
+- `referenceId`
+- `createdAt`
+- `sentAt`
+- `readAt`
+
 ## Logical Relationships
 
 - A registered auth user can own one user profile.
 - A user can organize many events through `Event.organizerId`.
 - A user can make many bookings through `Booking.userId`.
 - An event can have many bookings through `Booking.eventId`.
+- A user can have many notifications through `Notification.userId`.
 - Cross-service relationships are stored as IDs, not foreign keys, because each service owns its database.
