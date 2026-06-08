@@ -6,3 +6,6 @@ target/
 .env
 .DS_Store
 docker-data/
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local

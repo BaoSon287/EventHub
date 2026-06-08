@@ -1,12 +1,39 @@
 # EventHub Frontend
 
-Frontend implementation is intentionally out of scope for phase 1.
+React + Vite frontend for the EventHub microservices backend.
 
-Planned stack options:
+## Run Locally
 
-- React with Vite
-- TypeScript
-- Tailwind CSS or a component library
-- API Gateway base URL: `http://localhost:8080`
+Install dependencies:
 
-See `docs/figma-ui-plan.md` for the initial product screens and visual direction.
+```bash
+npm install
+```
+
+Start the dev server:
+
+```bash
+npm run dev
+```
+
+The app runs at:
+
+```text
+http://localhost:3000
+```
+
+## API Mode
+
+The navbar can switch between:
+
+- `Local Host (8080)`: calls the EventHub API Gateway at `http://localhost:8080`
+- `Mock Offline`: uses LocalStorage demo data
+
+Backend services should be running through Docker Compose or locally before using real API mode.
+
+## Scripts
+
+- `npm run dev`
+- `npm run build`
+- `npm run lint`
+- `npm run preview`
