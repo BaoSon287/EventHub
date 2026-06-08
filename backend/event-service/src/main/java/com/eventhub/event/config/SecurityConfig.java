@@ -26,7 +26,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/events/health", "/api/events", "/api/events/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/events/health", "/api/events", "/api/events/*", "/api/events/uploads/events/**").permitAll()
                         .requestMatchers("/api/events/internal/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/events/**").authenticated()

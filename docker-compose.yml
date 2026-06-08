@@ -110,8 +110,13 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       JWT_SECRET: ZXZlbnRodWItZGV2ZWxvcG1lbnQtc2VjcmV0LWtleS1jaGFuZ2UtbWUtMzI=
       INTERNAL_API_KEY: eventhub-internal-secret-change-me
+      EVENT_IMAGE_UPLOAD_DIR: /app/uploads/events
+      EVENT_IMAGE_PUBLIC_BASE_URL: http://localhost:8080
+      EVENT_IMAGE_PUBLIC_PATH: /api/events/uploads/events
     ports:
       - "8083:8083"
+    volumes:
+      - ./uploads/events:/app/uploads/events
     depends_on:
       postgres:
         condition: service_healthy

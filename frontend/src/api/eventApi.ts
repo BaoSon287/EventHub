@@ -21,6 +21,11 @@ type BackendEvent = {
   status: string;
 };
 
+type UploadImageResponse = {
+  imageUrl: string;
+  fileName: string;
+};
+
 type PageResponse<T> = {
   content: T[];
 };
@@ -63,6 +68,23 @@ const toUiEvent = (event: BackendEvent): Event => {
 };
 
 export const eventApi = {
+  uploadEventImage: async (file: File): Promise<UploadImageResponse> => {
+    if (getApiMode() === 'mock') {
+      const imageUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read image'));
+        reader.onerror = () => reject(new Error('Could not read image'));
+        reader.readAsDataURL(file);
+      });
+      return { imageUrl, fileName: file.name };
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosClient.post('/api/events/images/upload', formData);
+    return unwrap<UploadImageResponse>(response);
+  },
+
   getAll: async (params?: { category?: string; search?: string }) => {
     if (getApiMode() === 'mock') {
       await new Promise((resolve) => setTimeout(resolve, 300));

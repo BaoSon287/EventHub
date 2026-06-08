@@ -5,8 +5,10 @@ import { eventApi } from '../api/eventApi';
 import { authApi } from '../api/authApi';
 import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/Button';
+import { ImageUpload } from '../components/ImageUpload';
 import { useToast } from '../components/ui/ToastProvider';
 import { getErrorMessage } from '../utils/getErrorMessage';
+import { defaultEventImages } from '../data/defaultImages';
 
 export const CreateEventPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ export const CreateEventPage: React.FC = () => {
   const [description, setDescription] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [category, setCategory] = useState<'music' | 'tech' | 'art' | 'food' | 'sport'>('music');
-  const [image, setImage] = useState<string>('https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1000');
+  const [image, setImage] = useState<string>(defaultEventImages[0]);
   const [date, setDate] = useState<string>('2026-08-15');
   const [time, setTime] = useState<string>('18:00 - 22:00');
   const [location, setLocation] = useState<string>('White Palace Hoàng Văn Thụ, TP. Hồ Chí Minh');
@@ -31,11 +33,11 @@ export const CreateEventPage: React.FC = () => {
 
   // Preset gorgeous Unsplash assets to fill automatically for users
   const unsplashPresets: Record<'music' | 'tech' | 'art' | 'food' | 'sport', string> = {
-    music: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&q=80&w=1000',
-    tech: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1000',
-    art: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&q=80&w=1000',
-    food: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=1000',
-    sport: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=1000'
+    music: defaultEventImages[1],
+    tech: defaultEventImages[0],
+    art: defaultEventImages[2],
+    food: defaultEventImages[3],
+    sport: defaultEventImages[4]
   };
 
   const handlePresetFill = (cat: typeof category) => {
@@ -153,40 +155,45 @@ export const CreateEventPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Pricing description and visual links */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase text-slate-400">Giá vé cơ bản (đ) (Nhập 0 nếu Miễn phí)</label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(parseInt(e.target.value))}
-                className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
+          <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+            <div>
+              <h2 className="text-sm font-black text-slate-800">Media</h2>
+              <p className="mt-1 text-[10px] font-semibold text-slate-400">
+                Upload an event image or paste an image URL. The selected image is saved as event imageUrl.
+              </p>
             </div>
-
+            <ImageUpload
+              value={image}
+              onChange={setImage}
+              uploadFn={eventApi.uploadEventImage}
+              label="Upload event image"
+              helperText="JPG, PNG or WEBP up to 5MB. You can also paste an image URL below."
+              fallbackImage={unsplashPresets[category]}
+            />
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase text-slate-400">Hình ảnh biểu banner URL</label>
+              <label className="text-[10px] font-black uppercase text-slate-400">Optional image URL</label>
               <div className="relative">
-                <Image className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Image className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={image}
                   onChange={(e) => setImage(e.target.value)}
-                  placeholder="Paste URL hình ảnh banner vào đây..."
-                  className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  placeholder="Paste image URL here..."
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
           </div>
 
-          {/* Cover option review visualization */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-4.5">
-            <img src={image} className="w-24 h-14 object-cover rounded-lg bg-white shrink-0 border border-slate-200" />
-            <div className="space-y-1 text-slate-400">
-              <p className="text-[10px] font-bold text-slate-600">Bản xem trước hình ảnh gốc</p>
-              <p className="text-[9px] leading-tight font-medium">Bản ảnh được áp tối ưu tự động dựa trên Preset lúc chuyển danh mục. Bạn cũng có thể sửa URL ảnh thủ công.</p>
-            </div>
+          {/* Pricing description */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400">Giá vé cơ bản (đ) (Nhập 0 nếu Miễn phí)</label>
+            <input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(parseInt(e.target.value))}
+              className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            />
           </div>
 
           {/* Short description details */}

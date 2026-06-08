@@ -8,6 +8,7 @@ import { Event, User } from '../api/mockDb';
 import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
+import { EventImage } from '../components/EventImage';
 import { DetailSkeleton } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/ToastProvider';
 import { getErrorMessage } from '../utils/getErrorMessage';
@@ -103,10 +104,11 @@ export const EventDetailPage: React.FC = () => {
       
       {/* Visual Cover Banner with back pointer */}
       <div className="relative h-96 w-full bg-slate-900 overflow-hidden">
-        <img
+        <EventImage
           src={event.image}
           alt={event.title}
-          className="w-full h-full object-cover opacity-65"
+          variant="banner"
+          className="h-full w-full opacity-65"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
         

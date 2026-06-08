@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Tag } from 'lucide-react';
 import { Event } from '../api/mockDb';
 import { StatusBadge } from './StatusBadge';
+import { EventImage } from './EventImage';
 
 interface EventCardProps {
   event: Event;
@@ -38,11 +39,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event, id }) => {
     >
       {/* Banner Image */}
       <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
-        <img
-          src={event.image || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=600'}
-          alt={event.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+        <EventImage src={event.image} alt={event.title} className="h-full w-full transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
           <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${categoryColors[event.category]}`}>
             {categoryLabels[event.category]}

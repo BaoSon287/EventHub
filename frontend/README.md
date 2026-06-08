@@ -87,6 +87,7 @@ src/
 - Responsive navbar with role-aware mobile menu
 - Status badges for booking, payment, event, notification, and role states
 - Analytics dashboards with Recharts for organizer and admin views
+- Event image upload with preview, validation, remove/change actions, and URL paste fallback
 
 ## Analytics Dashboard
 
@@ -94,6 +95,16 @@ src/
 - Admin dashboard shows platform-level metrics such as users, events, bookings, payments, notifications, and revenue.
 - Charts are implemented with Recharts.
 - Some analytics may use demo fallback data when backend analytics APIs are unavailable.
+
+## Image Upload
+
+- Users can upload avatars from the Profile page or choose bundled avatar presets.
+- Organizers can upload event images from Create Event or paste an image URL manually.
+- Event image upload calls `POST /api/events/images/upload` with `multipart/form-data`.
+- Supported formats: JPG, PNG, WEBP.
+- Max size: 5MB.
+- Local development stores event images under `uploads/events` and serves them through `/api/events/uploads/events/{fileName}`.
+- In production this can be replaced with Cloudinary, S3, or another object storage/CDN setup.
 
 ## Demo Flow
 

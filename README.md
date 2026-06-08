@@ -182,6 +182,7 @@ curl -X GET http://localhost:8080/api/auth/me \
 - RabbitMQ notification events
 - Notification list and mark-as-read
 - Organizer and Admin analytics dashboards with charts for bookings, revenue, event status, and payment status
+- Avatar and event image upload for richer profiles and organizer event pages
 - Dockerized local environment
 
 ## Analytics Dashboard
@@ -189,6 +190,14 @@ curl -X GET http://localhost:8080/api/auth/me \
 Organizer dashboard shows event performance, ticket availability, bookings, revenue charts, payment status distribution, recent bookings, and top performing events. Admin dashboard shows platform-level metrics such as users, events, bookings, payments, notifications, revenue, and role distribution.
 
 Charts are implemented with Recharts in the React frontend. Some analytics may use safe demo fallback data when backend analytics APIs are unavailable, so the dashboard remains usable during demos without introducing a separate analytics service.
+
+## Image Upload
+
+Users can upload avatars in the frontend profile page or choose from bundled avatar assets. Organizers and admins can upload event images from the Create Event page, preview them, remove/change them, or paste an image URL manually.
+
+Event images are stored locally in development under `uploads/events` by Event Service and are served through the API Gateway at `/api/events/uploads/events/{fileName}`. Uploaded image URLs are saved in `event.imageUrl`.
+
+Supported event image formats are JPG, PNG, and WEBP with a 5MB max size. Local file storage is intended for development and CV demos. Production should replace it with object storage such as Cloudinary, Amazon S3, or Google Cloud Storage, scan uploaded files, and serve them through a CDN.
 
 ## Demo Flow
 
@@ -524,6 +533,7 @@ Known security limitations:
 
 - Event organizer display name currently uses the JWT email claim as `organizerName`; a later phase can resolve profile names from User Service.
 - Payment is mock-only; there is no real payment gateway yet.
+- Local file storage is used for uploaded event images in development; production should use object storage/CDN delivery.
 - Payment Service does not integrate VNPay, Stripe, or any real provider yet.
 - Booking cancellation refunds are represented by `PaymentStatus.REFUNDED` only.
 - Event Service internal ticket endpoints are public inside the dev stack; production needs service-to-service authentication.

@@ -3,18 +3,22 @@ package com.eventhub.event.controller;
 import com.eventhub.common.dto.ApiResponse;
 import com.eventhub.event.dto.CreateEventRequest;
 import com.eventhub.event.dto.EventResponse;
+import com.eventhub.event.dto.EventImageUploadResponse;
 import com.eventhub.event.dto.EventSearchCriteria;
 import com.eventhub.event.dto.PageResponse;
 import com.eventhub.event.dto.UpdateEventRequest;
 import com.eventhub.event.entity.EventStatus;
 import com.eventhub.event.security.CustomUserPrincipal;
+import com.eventhub.event.service.EventImageStorageService;
 import com.eventhub.event.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,9 +28,11 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/events")
 public class EventController {
     private final EventService service;
+    private final EventImageStorageService imageStorageService;
 
-    public EventController(EventService service) {
+    public EventController(EventService service, EventImageStorageService imageStorageService) {
         this.service = service;
+        this.imageStorageService = imageStorageService;
     }
 
     @Operation(summary = "Event service health check")
@@ -68,6 +74,18 @@ public class EventController {
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ApiResponse.success("Create event successfully", service.create(request, principal));
+    }
+
+    @Operation(summary = "Upload event image as ORGANIZER or ADMIN")
+    @PostMapping("/images/upload")
+    public ApiResponse<EventImageUploadResponse> uploadEventImage(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        if (principal == null || (!principal.isOrganizer() && !principal.isAdmin())) {
+            throw new AccessDeniedException("Only ORGANIZER or ADMIN can upload event images");
+        }
+        return ApiResponse.success("Upload event image successfully", imageStorageService.store(file));
     }
 
     @Operation(summary = "Update event as owner organizer or ADMIN")

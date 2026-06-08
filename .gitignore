@@ -11,3 +11,9 @@ docker-data/
 frontend/node_modules/
 frontend/dist/
 frontend/.env.local
+uploads/*
+!uploads/.gitkeep
+!uploads/events/
+!uploads/events/.gitkeep
+!uploads/avatars/
+!uploads/avatars/.gitkeep
