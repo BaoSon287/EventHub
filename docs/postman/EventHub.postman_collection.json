@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "EventHub",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "1" },
+    { "key": "eventId", "value": "1" },
+    { "key": "bookingId", "value": "1" },
+    { "key": "paymentId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register USER",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"123456\",\"fullName\":\"Demo User\",\"role\":\"USER\"}" }
+          }
+        },
+        {
+          "name": "Register ORGANIZER",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": { "mode": "raw", "raw": "{\"email\":\"organizer@example.com\",\"password\":\"123456\",\"fullName\":\"Demo Organizer\",\"role\":\"ORGANIZER\"}" }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"123456\"}" }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        { "name": "Get Events", "request": { "method": "GET", "url": "{{baseUrl}}/api/events" } },
+        { "name": "Get Event Detail", "request": { "method": "GET", "url": "{{baseUrl}}/api/events/{{eventId}}" } },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/events",
+            "body": { "mode": "raw", "raw": "{\"title\":\"Demo Event\",\"description\":\"Demo event\",\"category\":\"Technology\",\"location\":\"Demo Hall\",\"address\":\"1 Demo Street\",\"city\":\"Ha Noi\",\"startTime\":\"2026-12-01T09:00:00\",\"endTime\":\"2026-12-01T17:00:00\",\"totalTickets\":100,\"price\":100000,\"imageUrl\":\"https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1200\",\"status\":\"PUBLISHED\"}" }
+          }
+        },
+        { "name": "Publish Event", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/events/{{eventId}}/publish" } },
+        { "name": "Cancel Event", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/events/{{eventId}}/cancel" } }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/bookings",
+            "body": { "mode": "raw", "raw": "{\"eventId\":{{eventId}},\"quantity\":1}" }
+          }
+        },
+        { "name": "My Bookings", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/bookings/me" } },
+        { "name": "Cancel Booking", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel" } }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/payments",
+            "body": { "mode": "raw", "raw": "{\"bookingId\":{{bookingId}},\"method\":\"MOCK\"}" }
+          }
+        },
+        { "name": "Mock Success", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/payments/{{paymentId}}/mock-success" } },
+        {
+          "name": "Mock Fail",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/payments/{{paymentId}}/mock-fail",
+            "body": { "mode": "raw", "raw": "{\"failureReason\":\"Insufficient balance\"}" }
+          }
+        },
+        { "name": "My Payments", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/payments/me" } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "Get User Notifications", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/notifications/user/{{userId}}" } },
+        { "name": "Mark As Read", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/notifications/1/read" } }
+      ]
+    }
+  ]
+}

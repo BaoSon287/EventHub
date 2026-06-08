@@ -19,6 +19,12 @@ npm run dev
 The app runs at:
 
 ```text
+http://localhost:5173
+```
+
+When running through Docker Compose, the nginx build is available at:
+
+```text
 http://localhost:3000
 ```
 

@@ -195,5 +195,17 @@ services:
       discovery-server:
         condition: service_started
 
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    container_name: eventhub-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
 volumes:
   postgres-data:

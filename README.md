@@ -1,6 +1,6 @@
-# EventHub
+# EventHub - Microservices Event Management Platform
 
-EventHub is a Java Spring Boot microservices skeleton for creating, managing, and booking events, inspired by Eventbrite.
+EventHub is a full-stack event management and ticket booking platform inspired by Eventbrite, built with Spring Boot microservices, React, PostgreSQL, RabbitMQ, Docker, and JWT authentication.
 
 ## Tech Stack
 
@@ -18,10 +18,26 @@ EventHub is a Java Spring Boot microservices skeleton for creating, managing, an
 - Swagger/OpenAPI
 - Lombok
 - Validation
+- OpenFeign
+- React
+- Vite
+- Tailwind CSS
+- Axios
+- React Router
+- Nginx
 
 ## Architecture
 
-Frontend clients call the API Gateway on port `8080`. The gateway routes requests to services discovered through Eureka on port `8761`. Each domain service owns its own PostgreSQL database.
+Frontend clients call the API Gateway on port `8080`. The gateway routes requests to services discovered through Eureka on port `8761`. Each domain service owns its own PostgreSQL database. Booking, payment, and notification workflows use RabbitMQ for asynchronous events.
+
+```text
+Frontend
+  -> API Gateway
+  -> Auth/User/Event/Booking/Payment/Notification Services
+  -> PostgreSQL per service
+  -> RabbitMQ for async events
+  -> Notification Service consumes events
+```
 
 ## Services
 
@@ -35,6 +51,8 @@ Frontend clients call the API Gateway on port `8080`. The gateway routes request
 | booking-service | 8084 | booking_db | Booking creation and lookup |
 | notification-service | 8085 | notification_db | Notification endpoints, console email logging |
 | payment-service | 8086 | payment_db | Mock payment transaction management |
+| frontend dev | 5173 | - | React/Vite development server |
+| frontend docker | 3000 | - | Nginx-served React build |
 | rabbitmq | 5672 | - | Asynchronous event broker |
 | rabbitmq-management | 15672 | - | RabbitMQ management UI |
 
@@ -61,6 +79,7 @@ mvn -pl backend/event-service spring-boot:run
 mvn -pl backend/booking-service spring-boot:run
 mvn -pl backend/notification-service spring-boot:run
 mvn -pl backend/payment-service spring-boot:run
+cd frontend && npm install && npm run dev
 ```
 
 Default local database credentials are `eventhub/eventhub`.
@@ -76,6 +95,18 @@ docker compose up --build
 
 PostgreSQL initializes these databases automatically from `docker/postgres/init.sql`: `auth_db`, `user_db`, `event_db`, `booking_db`, `notification_db`, and `payment_db`.
 
+Frontend is available at http://localhost:3000 when running with Docker Compose.
+
+For frontend-only development:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend dev server is available at http://localhost:5173.
+
 RabbitMQ Management UI is available at http://localhost:15672 with username `eventhub` and password `eventhub`.
 
 ## Swagger URLs
@@ -84,8 +115,18 @@ RabbitMQ Management UI is available at http://localhost:15672 with username `eve
 - User: http://localhost:8082/swagger-ui/index.html
 - Event: http://localhost:8083/swagger-ui/index.html
 - Booking: http://localhost:8084/swagger-ui/index.html
-- Notification: http://localhost:8085/swagger-ui.html
-- Payment: http://localhost:8086/swagger-ui.html
+- Notification: http://localhost:8085/swagger-ui/index.html
+- Payment: http://localhost:8086/swagger-ui/index.html
+
+## Demo Accounts
+
+Create demo accounts through the frontend Register page or the Auth API:
+
+- `organizer@example.com` / `123456` with role `ORGANIZER`
+- `user@example.com` / `123456` with role `USER`
+- `admin@example.com` / `123456` with role `ADMIN`
+
+The backend seeds 8 published demo events automatically in Event Service without duplicating them on restart.
 
 ## Authentication Flow
 
@@ -127,6 +168,50 @@ Current user:
 curl -X GET http://localhost:8080/api/auth/me \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
+
+## Core Features
+
+- User registration and login
+- JWT authentication
+- Role-based access for `USER`, `ORGANIZER`, and `ADMIN`
+- Event creation and management
+- Event search and filtering
+- Ticket booking and availability updates
+- Mock payment flow
+- RabbitMQ notification events
+- Notification list and mark-as-read
+- Dockerized local environment
+
+## Demo Flow
+
+1. Organizer registers and logs in.
+2. Organizer creates a published event.
+3. User registers and logs in.
+4. User explores events and books tickets.
+5. User completes mock payment.
+6. Booking status changes to paid.
+7. Payment notification is created through RabbitMQ.
+8. User opens Notifications and marks messages as read.
+
+## Project Documentation
+
+- Smoke test checklist: `docs/testing/smoke-test.md`
+- Smoke test script: `scripts/smoke-test.ps1`
+- Postman guide: `docs/postman/README.md`
+- Postman collection: `docs/postman/EventHub.postman_collection.json`
+- CV project description: `docs/cv-description.md`
+- CI workflow: `.github/workflows/ci.yml`
+
+## Screenshots
+
+Screenshots can be added under `docs/screenshots` after capturing the local demo flow:
+
+- Event discovery page
+- Event detail and booking page
+- Mock payment page
+- My bookings page
+- Notifications page
+- Organizer dashboard
 
 ## Health Endpoints
 

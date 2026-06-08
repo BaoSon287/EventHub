@@ -110,5 +110,16 @@ export const bookingApi = {
 
     const response = await axiosClient.get(`/api/bookings/${toNumberId(id)}`);
     return { data: toUiBooking(unwrap<BackendBooking>(response)) };
+  },
+
+  cancel: async (id: string) => {
+    if (getApiMode() === 'mock') {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const booking = MockDatabase.updateBookingStatus(id, 'cancelled');
+      return { data: booking };
+    }
+
+    const response = await axiosClient.patch(`/api/bookings/${toNumberId(id)}/cancel`);
+    return { data: toUiBooking(unwrap<BackendBooking>(response)) };
   }
 };

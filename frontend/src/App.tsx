@@ -19,6 +19,7 @@ import { CreateEventPage } from './pages/CreateEventPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { MockDatabase } from './api/mockDb';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 // 1. Standard Page Layout featuring active header Navbar
 const StandardLayout = () => {
@@ -57,17 +58,23 @@ export default function App() {
           <Route path="/events/:id" element={<EventDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/my-bookings" element={<MyBookingsPage />} />
-          <Route path="/payments/:bookingId" element={<PaymentPage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/my-bookings" element={<MyBookingsPage />} />
+            <Route path="/payments/:bookingId" element={<PaymentPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
         </Route>
 
         {/* Workspace dashboard layouts */}
         <Route element={<FullBleedLayout />}>
-          <Route path="/organizer/dashboard" element={<OrganizerDashboardPage />} />
-          <Route path="/organizer/events/create" element={<CreateEventPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
+          <Route element={<ProtectedRoute allowedRoles={['organizer', 'admin']} />}>
+            <Route path="/organizer/dashboard" element={<OrganizerDashboardPage />} />
+            <Route path="/organizer/events/create" element={<CreateEventPage />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+            <Route path="/admin" element={<AdminDashboardPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

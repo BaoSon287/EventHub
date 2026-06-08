@@ -98,7 +98,8 @@ export const authApi = {
     });
     const user = toUiUser(unwrap<BackendUser>(response));
     localStorage.setItem('eventhub_current_user', JSON.stringify(user));
-    return { data: { user } };
+    const loginResponse = await authApi.login(userData.email, userData.password);
+    return loginResponse;
   },
 
   logout: () => {

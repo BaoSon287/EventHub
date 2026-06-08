@@ -38,6 +38,19 @@ export const MyBookingsPage: React.FC = () => {
     setShowQRModal(true);
   };
 
+  const handleCancel = async (bookingId: string) => {
+    if (!window.confirm('Bạn chắc chắn muốn hủy booking này?')) return;
+    try {
+      const res = await bookingApi.cancel(bookingId);
+      const updatedBooking = res.data;
+      if (updatedBooking) {
+        setBookings((current) => current.map((item) => item.id === bookingId ? updatedBooking : item));
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi hủy booking.');
+    }
+  };
+
   const formatPrice = (price: number) => {
     return `${price.toLocaleString('vi-VN')}đ`;
   };
@@ -133,14 +146,24 @@ export const MyBookingsPage: React.FC = () => {
 
                   <div className="w-auto md:w-full flex md:flex-col gap-2">
                     {booking.status === 'pending_payment' ? (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => navigate(`/payments/${booking.id}`)}
-                        className="w-full justify-center text-xs font-bold shadow-xs cursor-pointer"
-                      >
-                        Thanh toán ngay
-                      </Button>
+                      <>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => navigate(`/payments/${booking.id}`)}
+                          className="w-full justify-center text-xs font-bold shadow-xs cursor-pointer"
+                        >
+                          Thanh toán ngay
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCancel(booking.id)}
+                          className="w-full justify-center text-xs font-bold border-red-200 text-red-600 hover:bg-red-50 cursor-pointer"
+                        >
+                          Hủy booking
+                        </Button>
+                      </>
                     ) : booking.status === 'paid' ? (
                       <Button
                         variant="outline"

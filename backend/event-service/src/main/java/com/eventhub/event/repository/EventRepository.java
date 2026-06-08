@@ -16,6 +16,7 @@ import java.util.Optional;
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
     Page<Event> findByOrganizerId(Long organizerId, Pageable pageable);
     Page<Event> findByOrganizerIdAndStatus(Long organizerId, EventStatus status, Pageable pageable);
+    boolean existsByTitle(String title);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Event e where e.id = :id")
