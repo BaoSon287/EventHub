@@ -1,26 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Users, DollarSign, PlusCircle, Trash2, Edit2, Play, Sparkles, LayoutDashboard } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Calendar,
+  DollarSign,
+  Eye,
+  PlusCircle,
+  Ticket,
+  Trash2,
+  Users,
+  WalletCards,
+} from 'lucide-react';
 import { eventApi } from '../api/eventApi';
 import { authApi } from '../api/authApi';
-import { Event, User } from '../api/mockDb';
+import { Booking, Event, MockDatabase, User } from '../api/mockDb';
 import { Sidebar } from '../components/Sidebar';
-import { DashboardCard } from '../components/DashboardCard';
-import { Loading } from '../components/Loading';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/ToastProvider';
+import { StatCard } from '../components/analytics/StatCard';
+import { ChartCard } from '../components/analytics/ChartCard';
+import { RevenueLineChart } from '../components/analytics/RevenueLineChart';
+import { BookingBarChart } from '../components/analytics/BookingBarChart';
+import { EventStatusPieChart, PaymentStatusPieChart } from '../components/analytics/StatusPieChart';
+import { RecentTable, StatusCell } from '../components/analytics/RecentTable';
+import { TopEventsTable } from '../components/analytics/TopEventsTable';
+import {
+  buildTopEvents,
+  calculateOrganizerStats,
+  countByStatus,
+  groupBookingsByDay,
+  groupRevenueByDay,
+} from '../utils/analyticsUtils';
 import { getErrorMessage } from '../utils/getErrorMessage';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatDate } from '../utils/formatters';
+import { buildDemoBookingsFromEvents, buildDemoPaymentsFromBookings, DemoPayment } from '../data/demoAnalytics';
 
 export const OrganizerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [events, setEvents] = useState<Event[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [payments, setPayments] = useState<DemoPayment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [user, setUser] = useState<User | null>(authApi.getCurrentUser());
+  const [isDemoAnalytics, setIsDemoAnalytics] = useState<boolean>(false);
+  const [user] = useState<User | null>(authApi.getCurrentUser());
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
@@ -29,15 +55,29 @@ export const OrganizerDashboardPage: React.FC = () => {
     setLoading(true);
     eventApi.getAll()
       .then((res) => {
-        // filter events registered by this organizer, or if admin show all
-        const all = res.data;
-        const filtered = user.role === 'admin' 
-          ? all 
-          : all.filter((e: Event) => e.organizerId === user.id);
-        setEvents(filtered);
+        const allEvents = res.data;
+        const organizerEvents = user.role === 'admin'
+          ? allEvents
+          : allEvents.filter((event: Event) => event.organizerId === user.id);
+        const eventIds = new Set(organizerEvents.map((event) => event.id));
+        const mockBookings = MockDatabase.getBookings().filter((booking) => eventIds.has(booking.eventId));
+        const analyticsBookings = mockBookings.length ? mockBookings : buildDemoBookingsFromEvents(organizerEvents);
+        const analyticsPayments = buildDemoPaymentsFromBookings(analyticsBookings);
+
+        setEvents(organizerEvents);
+        setBookings(analyticsBookings);
+        setPayments(analyticsPayments);
+        setIsDemoAnalytics(mockBookings.length === 0);
       })
       .catch((err) => {
-        toast.error('Không tải được dashboard', getErrorMessage(err));
+        const message = getErrorMessage(err);
+        toast.error('Không tải được dashboard', message);
+        const fallbackEvents = MockDatabase.getEvents().filter((event) => user.role === 'admin' || event.organizerId === user.id);
+        const fallbackBookings = buildDemoBookingsFromEvents(fallbackEvents);
+        setEvents(fallbackEvents);
+        setBookings(fallbackBookings);
+        setPayments(buildDemoPaymentsFromBookings(fallbackBookings));
+        setIsDemoAnalytics(true);
       })
       .finally(() => setLoading(false));
   };
@@ -64,168 +104,130 @@ export const OrganizerDashboardPage: React.FC = () => {
     }
   };
 
-  // Compute statistics
-  const totalEvents = events.length;
-  const totalBookings = events.reduce((acc, e) => acc + e.booked, 0);
-  const totalRevenue = events.reduce((acc, e) => acc + (e.booked * e.price), 0);
+  const stats = useMemo(() => calculateOrganizerStats(events, bookings, payments), [events, bookings, payments]);
+  const revenueByDay = useMemo(() => groupRevenueByDay(payments), [payments]);
+  const bookingsByDay = useMemo(() => groupBookingsByDay(bookings), [bookings]);
+  const eventsByStatus = useMemo(() => countByStatus(events, 'status'), [events]);
+  const paymentsByStatus = useMemo(() => countByStatus(payments, 'status'), [payments]);
+  const topEvents = useMemo(() => buildTopEvents(events), [events]);
+  const recentEvents = useMemo(() => [...events].slice(0, 6), [events]);
+  const recentBookings = useMemo(() => [...bookings].slice(0, 6), [bookings]);
 
   return (
-    <div className="flex bg-slate-50 min-h-screen">
-      
-      {/* Sidebar layouts */}
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
 
-      {/* Main Container core */}
-      <main className="flex-1 p-6 sm:p-8 space-y-8 overflow-y-auto max-w-7xl">
-        
-        {/* Title sections */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <main className="max-w-7xl flex-1 space-y-8 overflow-y-auto p-5 sm:p-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <LayoutDashboard className="w-6.5 h-6.5 text-indigo-600 shrink-0" />
-              Tổng quan Dashboard
+            <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900">
+              <BarChart3 className="h-7 w-7 text-indigo-600" />
+              Organizer Dashboard
             </h1>
-            <p className="text-xs text-slate-400 font-semibold mt-1">Trang quản trị hoạt động chi tiết dành cho Nhà tổ chức EventHub.</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Track your events, bookings and revenue
+            </p>
+            {isDemoAnalytics && (
+              <p className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                Some analytics are generated from demo data.
+              </p>
+            )}
           </div>
 
-          <Link to="/organizer/events/create">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<PlusCircle className="w-4 h-4" />}
-              className="text-xs font-bold shadow-md cursor-pointer"
-            >
-              Tạo sự kiện mới
-            </Button>
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link to="/events">
+              <Button variant="outline" size="sm" leftIcon={<Eye className="h-4 w-4" />} className="w-full font-bold sm:w-auto">
+                View Events
+              </Button>
+            </Link>
+            <Link to="/organizer/events/create">
+              <Button variant="primary" size="sm" leftIcon={<PlusCircle className="h-4 w-4" />} className="w-full font-bold sm:w-auto">
+                Create Event
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {loading ? (
-          <TableSkeleton rows={5} />
-        ) : (
-          <div className="space-y-8">
-            
-            {/* 3 Metrics Dashboard widgets */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <DashboardCard
-                title="Khởi tạo sự kiện"
-                value={`${totalEvents} Sự kiện`}
-                icon={<Calendar className="w-5 h-5" />}
-                change="+12.5%"
-                changeType="positive"
-              />
-              <DashboardCard
-                title="Số vé giữ chỗ"
-                value={`${totalBookings.toLocaleString('vi-VN')} Vé`}
-                icon={<Users className="w-5 h-5" />}
-                change="+8.3%"
-                changeType="positive"
-              />
-              <DashboardCard
-                title="Doanh thu giả định"
-                value={`${totalRevenue.toLocaleString('vi-VN')} đ`}
-                icon={<DollarSign className="w-5 h-5" />}
-                change="+15.2%"
-                changeType="positive"
-              />
-            </div>
-
-            {/* List Table panel */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-xs overflow-hidden">
-              <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Danh sách sự kiện đang mở</h3>
-                <span className="text-[10px] font-bold text-slate-400">Hiển thị {events.length} kết quả</span>
-              </div>
-
-              {events.length === 0 ? (
-                <div className="p-12 text-center text-slate-400 font-semibold text-xs">
-                  <EmptyState
-                    title="Chưa có sự kiện"
-                    description="Tạo sự kiện đầu tiên để bắt đầu quản lý vé, lượt đặt chỗ và trạng thái xuất bản."
-                    actionLabel="Tạo sự kiện mới"
-                    onAction={() => navigate('/organizer/events/create')}
-                  />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-slate-600 border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-[10px] uppercase font-black text-slate-400 bg-slate-50">
-                        <th className="py-3 px-6">Sự kiện</th>
-                        <th className="py-3 px-6 col-span-2">Tiến trình bán vé</th>
-                        <th className="py-3 px-6">Giá vé chuẩn</th>
-                        <th className="py-3 px-6 text-right">Tác vụ</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 text-xs font-semibold">
-                      {events.map((event) => {
-                        const progress = event.capacity > 0 ? (event.booked / event.capacity) * 100 : 0;
-                        return (
-                          <tr key={event.id} className="hover:bg-slate-50">
-                            {/* Product thumbnail title */}
-                            <td className="py-4 px-6 flex items-center gap-3.5 max-w-sm">
-                              <img src={event.image} className="w-16 h-10 object-cover rounded-lg shrink-0" />
-                              <div className="min-w-0">
-                                <Link to={`/events/${event.id}`} className="font-extrabold text-slate-800 hover:text-indigo-600 truncate block">
-                                  {event.title}
-                                </Link>
-                                <p className="text-[10px] text-slate-400 font-semibold">{event.date} • {event.location.split(',')[0]}</p>
-                              </div>
-                            </td>
-
-                            {/* Ticket sales progress gauge bar */}
-                            <td className="py-4 px-6 max-w-xs">
-                              <div className="space-y-1">
-                                <div className="flex justify-between items-center text-[10px]">
-                                  <span className="text-slate-500 font-bold">{event.booked} / {event.capacity} vé</span>
-                                  <span className="font-black text-indigo-600">{progress.toFixed(0)}%</span>
-                                </div>
-                                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-indigo-600 rounded-full"
-                                    style={{ width: `${Math.min(100, progress)}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Base Price level */}
-                            <td className="py-4 px-6 text-slate-800 font-extrabold">
-                              {event.price === 0 ? 'Miễn phí' : formatCurrency(event.price)}
-                            </td>
-
-                            {/* Table Action utilities */}
-                            <td className="py-4 px-6 text-right">
-                              <div className="inline-flex items-center gap-2">
-                                <Link
-                                  to={`/events/${event.id}`}
-                                  title="Xem sự kiện"
-                                  className="p-1.5 hover:bg-slate-100 hover:text-indigo-600 rounded-lg transition"
-                                >
-                                  <Play className="w-4 h-4 text-slate-400" />
-                                </Link>
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteTargetId(event.id)}
-                                  title="Xóa sự kiện"
-                                  className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg transition cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4 text-slate-400" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
+          <TableSkeleton rows={8} />
+        ) : events.length === 0 ? (
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <EmptyState
+              title="No events yet"
+              description="Create your first event to start tracking ticket availability, bookings and revenue."
+              actionLabel="Create Event"
+              onAction={() => navigate('/organizer/events/create')}
+            />
           </div>
-        )}
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard title="Total Events" value={stats.totalEvents} icon={<Calendar className="h-5 w-5" />} />
+              <StatCard title="Published Events" value={stats.publishedEvents} icon={<BarChart3 className="h-5 w-5" />} tone="emerald" />
+              <StatCard title="Cancelled Events" value={stats.cancelledEvents} icon={<Trash2 className="h-5 w-5" />} tone="rose" />
+              <StatCard title="Available Tickets" value={stats.availableTickets.toLocaleString('vi-VN')} icon={<Ticket className="h-5 w-5" />} tone="amber" />
+              <StatCard title="Total Bookings" value={stats.totalBookings.toLocaleString('vi-VN')} icon={<Users className="h-5 w-5" />} />
+              <StatCard title="Total Revenue" value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-5 w-5" />} tone="amber" />
+              <StatCard title="Paid Revenue" value={formatCurrency(stats.paidRevenue)} icon={<WalletCards className="h-5 w-5" />} tone="emerald" />
+              <StatCard title="Draft Events" value={stats.draftEvents} icon={<Calendar className="h-5 w-5" />} tone="slate" />
+            </div>
 
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <ChartCard title="Revenue by Day" subtitle="Paid revenue timeline" isEmpty={revenueByDay.length === 0}>
+                <RevenueLineChart data={revenueByDay} />
+              </ChartCard>
+              <ChartCard title="Bookings by Day" subtitle="Ticket quantity booked by date" isEmpty={bookingsByDay.length === 0}>
+                <BookingBarChart data={bookingsByDay} />
+              </ChartCard>
+              <ChartCard title="Events by Status" subtitle="Organizer event status mix" isEmpty={eventsByStatus.length === 0}>
+                <EventStatusPieChart data={eventsByStatus} />
+              </ChartCard>
+              <ChartCard title="Payment Status" subtitle="Demo payment distribution" isEmpty={paymentsByStatus.length === 0}>
+                <PaymentStatusPieChart data={paymentsByStatus} />
+              </ChartCard>
+            </div>
+
+            <TopEventsTable events={topEvents} />
+
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              <RecentTable
+                title="Recent Events"
+                items={recentEvents}
+                columns={[
+                  { key: 'event', label: 'Event', render: (event) => <Link to={`/events/${event.id}`} className="font-extrabold text-slate-900 hover:text-indigo-600">{event.title}</Link> },
+                  { key: 'date', label: 'Date', render: (event) => formatDate(event.date) },
+                  { key: 'sold', label: 'Sold', render: (event) => `${event.booked}/${event.capacity}` },
+                  { key: 'status', label: 'Status', render: (event) => <StatusCell status={event.status} /> },
+                  {
+                    key: 'actions',
+                    label: 'Actions',
+                    render: (event) => (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTargetId(event.id)}
+                        className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
+                        aria-label={`Delete ${event.title}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ),
+                  },
+                ]}
+              />
+              <RecentTable
+                title="Recent Bookings"
+                items={recentBookings}
+                columns={[
+                  { key: 'booking', label: 'Booking', render: (booking) => <span className="font-mono font-black text-indigo-700">#{booking.id.slice(-8)}</span> },
+                  { key: 'event', label: 'Event', render: (booking) => <span className="font-extrabold text-slate-900">{booking.eventTitle}</span> },
+                  { key: 'qty', label: 'Qty', render: (booking) => booking.quantity },
+                  { key: 'amount', label: 'Amount', render: (booking) => formatCurrency(booking.totalPrice) },
+                  { key: 'status', label: 'Status', render: (booking) => <StatusCell status={booking.status} /> },
+                ]}
+              />
+            </div>
+          </>
+        )}
       </main>
 
       <ConfirmDialog
@@ -239,7 +241,6 @@ export const OrganizerDashboardPage: React.FC = () => {
         onCancel={() => setDeleteTargetId(null)}
         onConfirm={() => deleteTargetId && handleDelete(deleteTargetId)}
       />
-
     </div>
   );
 };

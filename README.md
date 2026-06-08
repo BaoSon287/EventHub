@@ -24,6 +24,7 @@ EventHub is a full-stack event management and ticket booking platform inspired b
 - Tailwind CSS
 - Axios
 - React Router
+- Recharts
 - Nginx
 
 ## Architecture
@@ -180,7 +181,14 @@ curl -X GET http://localhost:8080/api/auth/me \
 - Mock payment flow
 - RabbitMQ notification events
 - Notification list and mark-as-read
+- Organizer and Admin analytics dashboards with charts for bookings, revenue, event status, and payment status
 - Dockerized local environment
+
+## Analytics Dashboard
+
+Organizer dashboard shows event performance, ticket availability, bookings, revenue charts, payment status distribution, recent bookings, and top performing events. Admin dashboard shows platform-level metrics such as users, events, bookings, payments, notifications, revenue, and role distribution.
+
+Charts are implemented with Recharts in the React frontend. Some analytics may use safe demo fallback data when backend analytics APIs are unavailable, so the dashboard remains usable during demos without introducing a separate analytics service.
 
 ## Demo Flow
 

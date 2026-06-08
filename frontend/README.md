@@ -10,6 +10,7 @@ React + Vite frontend for the EventHub event-booking platform. The app can run a
 - React Router
 - Axios
 - Lucide React
+- Recharts
 
 ## Run Locally
 
@@ -85,6 +86,14 @@ src/
 - Empty and error states for list/detail failures
 - Responsive navbar with role-aware mobile menu
 - Status badges for booking, payment, event, notification, and role states
+- Analytics dashboards with Recharts for organizer and admin views
+
+## Analytics Dashboard
+
+- Organizer dashboard shows event performance, ticket availability, bookings, revenue charts, and top performing events.
+- Admin dashboard shows platform-level metrics such as users, events, bookings, payments, notifications, and revenue.
+- Charts are implemented with Recharts.
+- Some analytics may use demo fallback data when backend analytics APIs are unavailable.
 
 ## Demo Flow
 
