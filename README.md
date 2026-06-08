@@ -196,6 +196,7 @@ curl -X GET http://localhost:8080/api/auth/me \
 ## Project Documentation
 
 - Smoke test checklist: `docs/testing/smoke-test.md`
+- Run guide: `docs/run-guide.md`
 - Smoke test script: `scripts/smoke-test.ps1`
 - Postman guide: `docs/postman/README.md`
 - Postman collection: `docs/postman/EventHub.postman_collection.json`

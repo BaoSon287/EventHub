@@ -283,6 +283,17 @@ export class MockDatabase {
     localStorage.setItem('eventhub_users', JSON.stringify(users));
   }
 
+  static updateUser(id: string, updatedFields: Partial<User>): User | undefined {
+    const users = this.getUsers();
+    const index = users.findIndex(u => u.id === id);
+    if (index !== -1) {
+      users[index] = { ...users[index], ...updatedFields };
+      localStorage.setItem('eventhub_users', JSON.stringify(users));
+      return users[index];
+    }
+    return undefined;
+  }
+
   // --- Events ---
   static getEvents(): Event[] {
     this.init();

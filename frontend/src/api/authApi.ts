@@ -1,6 +1,7 @@
 import axiosClient, { getApiMode } from './axiosClient';
 import { unwrap } from './apiUtils';
 import { MockDatabase, User } from './mockDb';
+import { userApi } from './userApi';
 
 type BackendUser = {
   id: number;
@@ -52,9 +53,10 @@ export const authApi = {
     // Real API Call
     const response = await axiosClient.post('/api/auth/login', { email: username, password });
     const data = unwrap<LoginResponse>(response);
-    const user = toUiUser(data.user);
+    let user = toUiUser(data.user);
     if (data.accessToken) {
       localStorage.setItem('eventhub_access_token', data.accessToken);
+      user = await userApi.syncCurrentProfile(user);
       localStorage.setItem('eventhub_current_user', JSON.stringify(user));
     }
     return { data: { accessToken: data.accessToken, user } };
