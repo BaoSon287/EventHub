@@ -6,11 +6,17 @@ import { Event } from '../api/mockDb';
 import { EventCard } from '../components/EventCard';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
+import { EventCardSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const EventListPage: React.FC = () => {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Get active filter status from search params
   const categoryFilter = searchParams.get('category') || 'all';
@@ -27,6 +33,7 @@ export const EventListPage: React.FC = () => {
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     eventApi.getAll({
       category: categoryFilter,
       search: searchQuery
@@ -34,7 +41,11 @@ export const EventListPage: React.FC = () => {
       .then((res) => {
         setEvents(res.data);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        const message = getErrorMessage(err, 'Không tải được danh sách sự kiện.');
+        setError(message);
+        toast.error('Không tải được sự kiện', message);
+      })
       .finally(() => setLoading(false));
   }, [categoryFilter, searchQuery]);
 
@@ -122,7 +133,20 @@ export const EventListPage: React.FC = () => {
 
         {/* Dynamic Lists Grid */}
         {loading ? (
-          <Loading message="Đang tìm kiếm sự kiện phù hợp..." />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <EventCardSkeleton key={index} />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <ErrorState
+              title="Không tải được sự kiện"
+              message={error}
+              actionLabel="Thử lại"
+              onAction={() => setSearchParams(new URLSearchParams(searchParams))}
+            />
+          </div>
         ) : events.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 py-12 shadow-sm">
             <EmptyState

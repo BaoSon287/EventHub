@@ -1,84 +1,61 @@
 import React from 'react';
 
-type BadgeStatus = 
-  | 'upcoming' | 'ongoing' | 'completed' | 'cancelled' 
+type KnownBadgeStatus =
+  | 'upcoming' | 'ongoing' | 'completed' | 'cancelled'
   | 'paid' | 'pending_payment'
   | 'attendee' | 'organizer' | 'admin'
-  | 'vip' | 'standard';
+  | 'vip' | 'standard'
+  | 'confirmed' | 'pending' | 'expired'
+  | 'unpaid' | 'failed' | 'refunded'
+  | 'draft' | 'published'
+  | 'sent' | 'read';
 
 interface StatusBadgeProps {
-  status: BadgeStatus;
+  status: string;
   id?: string;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, id }) => {
-  const styles: Record<BadgeStatus, { bg: string; text: string; label: string }> = {
-    upcoming: {
-      bg: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      text: 'emerald-700',
-      label: 'Sắp diễn ra'
-    },
-    ongoing: {
-      bg: 'bg-blue-50 border-blue-200 text-blue-700',
-      text: 'blue-700',
-      label: 'Đang diễn ra'
-    },
-    completed: {
-      bg: 'bg-slate-50 border-slate-200 text-slate-600',
-      text: 'slate-600',
-      label: 'Đã kết thúc'
-    },
-    cancelled: {
-      bg: 'bg-red-50 border-red-200 text-red-600',
-      text: 'red-600',
-      label: 'Đã hủy'
-    },
-    paid: {
-      bg: 'bg-green-50 border-green-200 text-green-700 font-semibold',
-      text: 'green-700',
-      label: 'Đã thanh toán'
-    },
-    pending_payment: {
-      bg: 'bg-amber-50 border-amber-200 text-amber-700 font-semibold animate-pulse',
-      text: 'amber-700',
-      label: 'Chờ thanh toán'
-    },
-    attendee: {
-      bg: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-      text: 'indigo-700',
-      label: 'Người tham gia'
-    },
-    organizer: {
-      bg: 'bg-violet-50 border-violet-200 text-violet-700',
-      text: 'violet-700',
-      label: 'Ban tổ chức'
-    },
-    admin: {
-      bg: 'bg-teal-50 border-teal-200 text-teal-700',
-      text: 'teal-700',
-      label: 'Quản trị viên'
-    },
-    vip: {
-      bg: 'bg-rose-50 border-rose-200 text-rose-700 font-bold tracking-wider',
-      text: 'rose-700',
-      label: 'VIP Ticket'
-    },
-    standard: {
-      bg: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-      text: 'indigo-700',
-      label: 'Standard'
-    }
-  };
+const styles: Record<KnownBadgeStatus, { bg: string; label: string }> = {
+  upcoming: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Upcoming' },
+  ongoing: { bg: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Ongoing' },
+  completed: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Completed' },
+  cancelled: { bg: 'bg-red-50 border-red-200 text-red-600', label: 'Cancelled' },
+  paid: { bg: 'bg-green-50 border-green-200 text-green-700', label: 'Paid' },
+  pending_payment: { bg: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Pending payment' },
+  attendee: { bg: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'Attendee' },
+  organizer: { bg: 'bg-violet-50 border-violet-200 text-violet-700', label: 'Organizer' },
+  admin: { bg: 'bg-teal-50 border-teal-200 text-teal-700', label: 'Admin' },
+  vip: { bg: 'bg-rose-50 border-rose-200 text-rose-700', label: 'VIP' },
+  standard: { bg: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'Standard' },
+  confirmed: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Confirmed' },
+  pending: { bg: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Pending' },
+  expired: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Expired' },
+  unpaid: { bg: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Unpaid' },
+  failed: { bg: 'bg-red-50 border-red-200 text-red-600', label: 'Failed' },
+  refunded: { bg: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Refunded' },
+  draft: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Draft' },
+  published: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Published' },
+  sent: { bg: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'Sent' },
+  read: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Read' },
+};
 
-  const current = styles[status] || {
+const humanize = (value: string) => (
+  value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+);
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, id }) => {
+  const normalized = String(status || 'neutral').toLowerCase();
+  const current = styles[normalized as KnownBadgeStatus] || {
     bg: 'bg-slate-50 border-slate-200 text-slate-600',
-    label: status
+    label: humanize(String(status || 'Unknown')),
   };
 
   return (
     <span
       id={id}
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${current.bg}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${current.bg}`}
     >
       {current.label}
     </span>

@@ -5,9 +5,12 @@ import { eventApi } from '../api/eventApi';
 import { authApi } from '../api/authApi';
 import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/Button';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const CreateEventPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [user] = useState(() => authApi.getCurrentUser());
 
   // Input States
@@ -65,9 +68,12 @@ export const CreateEventPage: React.FC = () => {
         status,
         featured: false
       });
+      toast.success('Đã tạo sự kiện', 'Sự kiện mới đã được lưu vào dashboard.');
       navigate('/organizer/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Lỗi lưu trữ dữ liệu sự kiện.');
+    } catch (err) {
+      const message = getErrorMessage(err, 'Lỗi lưu trữ dữ liệu sự kiện.');
+      setError(message);
+      toast.error('Không thể tạo sự kiện', message);
     } finally {
       setLoading(false);
     }

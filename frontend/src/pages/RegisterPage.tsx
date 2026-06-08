@@ -3,9 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, User, Mail, Lock, UserCheck, Sparkles, Building2 } from 'lucide-react';
 import { authApi } from '../api/authApi';
 import { Button } from '../components/Button';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -37,6 +40,7 @@ export const RegisterPage: React.FC = () => {
 
       // Notify Navbar of session creation
       window.dispatchEvent(new Event('storage'));
+      toast.success('Đăng ký thành công', 'Tài khoản mới đã sẵn sàng để sử dụng.');
       
       // Redirect based on selected user category
       if (role === 'organizer') {
@@ -44,8 +48,10 @@ export const RegisterPage: React.FC = () => {
       } else {
         navigate('/');
       }
-    } catch (err: any) {
-      setError(err.message || 'Lỗi đăng ký tài khoản.');
+    } catch (err) {
+      const message = getErrorMessage(err, 'Lỗi đăng ký tài khoản.');
+      setError(message);
+      toast.error('Đăng ký thất bại', message);
     } finally {
       setLoading(false);
     }

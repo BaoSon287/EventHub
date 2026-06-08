@@ -5,9 +5,13 @@ import { eventApi } from '../api/eventApi';
 import { Event } from '../api/mockDb';
 import { EventCard } from '../components/EventCard';
 import { Loading } from '../components/Loading';
+import { EventCardSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [featuredEvents, setFeaturedEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -20,7 +24,9 @@ export const HomePage: React.FC = () => {
         const featured = all.filter((e: Event) => e.featured) || all.slice(0, 3);
         setFeaturedEvents(featured.length ? featured : all.slice(0, 3));
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        toast.error('Không tải được sự kiện nổi bật', getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -157,7 +163,11 @@ export const HomePage: React.FC = () => {
         </div>
 
         {loading ? (
-          <Loading />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <EventCardSkeleton key={index} />
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredEvents.map((event) => (

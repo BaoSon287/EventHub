@@ -20,6 +20,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { MockDatabase } from './api/mockDb';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ToastProvider } from './components/ui/ToastProvider';
 
 // 1. Standard Page Layout featuring active header Navbar
 const StandardLayout = () => {
@@ -49,34 +50,36 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Core standard layouts */}
-        <Route element={<StandardLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/events" element={<EventListPage />} />
-          <Route path="/events/:id" element={<EventDetailPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/my-bookings" element={<MyBookingsPage />} />
-            <Route path="/payments/:bookingId" element={<PaymentPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Core standard layouts */}
+          <Route element={<StandardLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/events" element={<EventListPage />} />
+            <Route path="/events/:id" element={<EventDetailPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/my-bookings" element={<MyBookingsPage />} />
+              <Route path="/payments/:bookingId" element={<PaymentPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Workspace dashboard layouts */}
-        <Route element={<FullBleedLayout />}>
-          <Route element={<ProtectedRoute allowedRoles={['organizer', 'admin']} />}>
-            <Route path="/organizer/dashboard" element={<OrganizerDashboardPage />} />
-            <Route path="/organizer/events/create" element={<CreateEventPage />} />
+          {/* Workspace dashboard layouts */}
+          <Route element={<FullBleedLayout />}>
+            <Route element={<ProtectedRoute allowedRoles={['organizer', 'admin']} />}>
+              <Route path="/organizer/dashboard" element={<OrganizerDashboardPage />} />
+              <Route path="/organizer/events/create" element={<CreateEventPage />} />
+            </Route>
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="/admin" element={<AdminDashboardPage />} />
+            </Route>
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin" element={<AdminDashboardPage />} />
-          </Route>
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

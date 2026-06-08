@@ -8,10 +8,15 @@ import { Event, User } from '../api/mockDb';
 import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
+import { DetailSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
+import { formatCurrency } from '../utils/formatters';
 
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -38,7 +43,7 @@ export const EventDetailPage: React.FC = () => {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <Loading fullPage message="Đang nạp thông tin sự kiện..." />;
+  if (loading) return <DetailSkeleton />;
   if (error || !event) {
     return (
       <div className="max-w-xl mx-auto py-16 px-4 text-center space-y-6">
@@ -63,6 +68,7 @@ export const EventDetailPage: React.FC = () => {
   const handleBooking = async () => {
     if (!user) {
       // Guide profile login with redirect back URL
+      toast.info('Vui lòng đăng nhập', 'Bạn cần đăng nhập trước khi đặt vé.');
       navigate(`/login?redirect=${encodeURIComponent(`/events/${event.id}`)}`);
       return;
     }
@@ -75,9 +81,10 @@ export const EventDetailPage: React.FC = () => {
         ticketType
       });
       // Redirect to simulated payments page
+      toast.success('Đặt vé thành công', 'Bạn có thể hoàn tất thanh toán ở bước tiếp theo.');
       navigate(`/payments/${res.data.id}`);
-    } catch (err: any) {
-      alert(err.message || 'Lỗi đăng ký vé sự kiện.');
+    } catch (err) {
+      toast.error('Không thể đặt vé', getErrorMessage(err));
     } finally {
       setBookingLoading(false);
     }
@@ -220,7 +227,7 @@ export const EventDetailPage: React.FC = () => {
                   }`}
                 >
                   <p className="text-xs">Standard</p>
-                  <p className="text-sm font-black mt-1">{event.price.toLocaleString('vi-VN')}đ</p>
+                  <p className="text-sm font-black mt-1">{formatCurrency(event.price)}</p>
                 </button>
 
                 <button
@@ -235,7 +242,7 @@ export const EventDetailPage: React.FC = () => {
                   <p className="text-xs flex items-center justify-center gap-1">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin" style={{ animationDuration: '4s' }} /> VIP
                   </p>
-                  <p className="text-sm font-black mt-1">{(event.price * 1.5).toLocaleString('vi-VN')}đ</p>
+                  <p className="text-sm font-black mt-1">{formatCurrency(event.price * 1.5)}</p>
                 </button>
               </div>
             </div>
@@ -268,7 +275,7 @@ export const EventDetailPage: React.FC = () => {
             <div className="flex items-center justify-between bg-indigo-50/50 rounded-xl p-4 border border-indigo-100">
               <div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase">Tổng cộng</p>
-                <p className="text-lg font-black text-indigo-700">{totalPrice.toLocaleString('vi-VN')}đ</p>
+                <p className="text-lg font-black text-indigo-700">{formatCurrency(totalPrice)}</p>
               </div>
               <span className="inline-block px-2.5 py-1 text-[10px] font-extrabold text-indigo-700 bg-indigo-100/55 uppercase rounded-sm">
                 Sẵn sàng

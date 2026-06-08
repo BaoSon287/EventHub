@@ -7,12 +7,16 @@ import { Sidebar } from '../components/Sidebar';
 import { DashboardCard } from '../components/DashboardCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { useToast } from '../components/ui/ToastProvider';
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [currentUser, setCurrentUser] = useState<User | null>(() => authApi.getCurrentUser());
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [deleteTargetUsername, setDeleteTargetUsername] = useState<string | null>(null);
 
   const fetchAllUsers = () => {
     setLoading(true);
@@ -50,14 +54,15 @@ export const AdminDashboardPage: React.FC = () => {
 
   const handleUserDelete = (username: string) => {
     if (username === 'admin') {
-      alert('Không thể xóa Quản trị viên gốc.');
+      toast.error('Không thể xóa admin gốc');
       return;
     }
-    if (!window.confirm(`Xóa tài khoản "${username}" khỏi hệ thống?`)) return;
 
     const list = MockDatabase.getUsers();
     const filtered = list.filter(u => u.username !== username);
     localStorage.setItem('eventhub_users', JSON.stringify(filtered));
+    toast.success('Đã xóa tài khoản', `Tài khoản ${username} đã được gỡ khỏi danh sách mô phỏng.`);
+    setDeleteTargetUsername(null);
     fetchAllUsers();
   };
 
@@ -174,7 +179,7 @@ export const AdminDashboardPage: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           disabled={item.username === 'admin'}
-                          onClick={() => handleUserDelete(item.username)}
+                          onClick={() => setDeleteTargetUsername(item.username)}
                           className="text-[10px] text-red-500 hover:bg-red-50/50 font-bold px-2 py-1! cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           Xóa
@@ -191,6 +196,17 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
       </main>
+
+      <ConfirmDialog
+        open={Boolean(deleteTargetUsername)}
+        title="Delete account?"
+        description={`Remove ${deleteTargetUsername || 'this account'} from the local admin list?`}
+        confirmText="Delete account"
+        cancelText="Keep account"
+        variant="danger"
+        onCancel={() => setDeleteTargetUsername(null)}
+        onConfirm={() => deleteTargetUsername && handleUserDelete(deleteTargetUsername)}
+      />
 
     </div>
   );

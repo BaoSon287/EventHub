@@ -3,9 +3,12 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ShieldCheck, Info, User, Lock, ArrowRight, Sparkles } from 'lucide-react';
 import { authApi } from '../api/authApi';
 import { Button } from '../components/Button';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -30,11 +33,14 @@ export const LoginPage: React.FC = () => {
       
       // Dispatch storage update to notify navbar
       window.dispatchEvent(new Event('storage'));
+      toast.success('Đăng nhập thành công');
       
       // Navigate to success target
       navigate(redirectUrl);
-    } catch (err: any) {
-      setError(err.message || 'Lỗi đăng nhập hệ thống.');
+    } catch (err) {
+      const message = getErrorMessage(err, 'Lỗi đăng nhập hệ thống.');
+      setError(message);
+      toast.error('Đăng nhập thất bại', message);
     } finally {
       setLoading(false);
     }

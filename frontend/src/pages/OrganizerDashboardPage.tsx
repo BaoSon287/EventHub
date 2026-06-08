@@ -8,12 +8,21 @@ import { Sidebar } from '../components/Sidebar';
 import { DashboardCard } from '../components/DashboardCard';
 import { Loading } from '../components/Loading';
 import { Button } from '../components/Button';
+import { EmptyState } from '../components/EmptyState';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
+import { formatCurrency } from '../utils/formatters';
 
 export const OrganizerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(authApi.getCurrentUser());
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const fetchOrganizerEvents = () => {
     if (!user) return;
@@ -27,7 +36,9 @@ export const OrganizerDashboardPage: React.FC = () => {
           : all.filter((e: Event) => e.organizerId === user.id);
         setEvents(filtered);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        toast.error('Không tải được dashboard', getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -40,12 +51,16 @@ export const OrganizerDashboardPage: React.FC = () => {
   }, [user, navigate]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa sự kiện này? Hành động này không thể hoàn tác.')) return;
+    setDeleteLoading(true);
     try {
       await eventApi.delete(id);
+      toast.success('Đã xóa sự kiện');
+      setDeleteTargetId(null);
       fetchOrganizerEvents();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi xóa sự kiện.');
+    } catch (err) {
+      toast.error('Không thể xóa sự kiện', getErrorMessage(err));
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -86,7 +101,7 @@ export const OrganizerDashboardPage: React.FC = () => {
         </div>
 
         {loading ? (
-          <Loading message="Đang nạp dữ liệu thống kê sự kiện..." />
+          <TableSkeleton rows={5} />
         ) : (
           <div className="space-y-8">
             
@@ -124,7 +139,12 @@ export const OrganizerDashboardPage: React.FC = () => {
 
               {events.length === 0 ? (
                 <div className="p-12 text-center text-slate-400 font-semibold text-xs">
-                  Bạn chưa có sự kiện nào đang diễn ra. Hãy click "Tạo sự kiện mới" để bắt đầu quảng bá vé!
+                  <EmptyState
+                    title="Chưa có sự kiện"
+                    description="Tạo sự kiện đầu tiên để bắt đầu quản lý vé, lượt đặt chỗ và trạng thái xuất bản."
+                    actionLabel="Tạo sự kiện mới"
+                    onAction={() => navigate('/organizer/events/create')}
+                  />
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -171,7 +191,7 @@ export const OrganizerDashboardPage: React.FC = () => {
 
                             {/* Base Price level */}
                             <td className="py-4 px-6 text-slate-800 font-extrabold">
-                              {event.price === 0 ? 'Miễn phí' : `${event.price.toLocaleString('vi-VN')} đ`}
+                              {event.price === 0 ? 'Miễn phí' : formatCurrency(event.price)}
                             </td>
 
                             {/* Table Action utilities */}
@@ -186,7 +206,7 @@ export const OrganizerDashboardPage: React.FC = () => {
                                 </Link>
                                 <button
                                   type="button"
-                                  onClick={() => handleDelete(event.id)}
+                                  onClick={() => setDeleteTargetId(event.id)}
                                   title="Xóa sự kiện"
                                   className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-lg transition cursor-pointer"
                                 >
@@ -207,6 +227,18 @@ export const OrganizerDashboardPage: React.FC = () => {
         )}
 
       </main>
+
+      <ConfirmDialog
+        open={Boolean(deleteTargetId)}
+        title="Delete event?"
+        description="Are you sure you want to delete this event? This action cannot be undone."
+        confirmText="Delete event"
+        cancelText="Keep event"
+        variant="danger"
+        isLoading={deleteLoading}
+        onCancel={() => setDeleteTargetId(null)}
+        onConfirm={() => deleteTargetId && handleDelete(deleteTargetId)}
+      />
 
     </div>
   );

@@ -7,10 +7,15 @@ import { authApi } from '../api/authApi';
 import { Booking } from '../api/mockDb';
 import { Loading } from '../components/Loading';
 import { Button } from '../components/Button';
+import { useToast } from '../components/ui/ToastProvider';
+import { DetailSkeleton } from '../components/ui/Skeleton';
+import { getErrorMessage } from '../utils/getErrorMessage';
+import { formatCurrency } from '../utils/formatters';
 
 export const PaymentPage: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -46,14 +51,15 @@ export const PaymentPage: React.FC = () => {
         amount: booking.totalPrice
       });
       setPaymentSuccess(true);
-    } catch (err: any) {
-      alert(err.message || 'Lỗi thanh toán hóa đơn.');
+      toast.success('Thanh toán thành công', 'Vé của bạn đã sẵn sàng trong mục My Tickets.');
+    } catch (err) {
+      toast.error('Thanh toán thất bại', getErrorMessage(err));
     } finally {
       setPaymentLoading(false);
     }
   };
 
-  if (loading) return <Loading message="Đang liên kết cổng thanh toán..." />;
+  if (loading) return <DetailSkeleton />;
   if (error || !booking) {
     return (
       <div className="max-w-md mx-auto py-16 px-4 text-center space-y-4">
@@ -104,7 +110,7 @@ export const PaymentPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between pt-3 border-t border-slate-200">
                   <span className="text-slate-700 font-bold">Tổng thanh toán</span>
-                  <span className="text-indigo-600 font-black text-sm">{booking.totalPrice.toLocaleString('vi-VN')}đ</span>
+                  <span className="text-indigo-600 font-black text-sm">{formatCurrency(booking.totalPrice)}</span>
                 </div>
               </div>
 
@@ -269,7 +275,7 @@ export const PaymentPage: React.FC = () => {
                 isLoading={paymentLoading}
                 className="w-full justify-center py-3 font-extrabold text-sm shadow-md cursor-pointer"
               >
-                Xác nhận thanh toán : {booking.totalPrice.toLocaleString('vi-VN')}đ
+                Xác nhận thanh toán : {formatCurrency(booking.totalPrice)}
               </Button>
             </div>
           )}
@@ -296,7 +302,7 @@ export const PaymentPage: React.FC = () => {
             </div>
             <div className="flex justify-between">
               <span>Đơn giá</span>
-              <span className="text-slate-800 font-bold">{(booking.totalPrice / booking.quantity).toLocaleString('vi-VN')}đ</span>
+              <span className="text-slate-800 font-bold">{formatCurrency(booking.totalPrice / booking.quantity)}</span>
             </div>
             <div className="flex justify-between">
               <span>Số lượng</span>
@@ -306,7 +312,7 @@ export const PaymentPage: React.FC = () => {
 
           <div className="flex justify-between font-extrabold text-slate-800">
             <span className="text-sm">Tổng đặt vé</span>
-            <span className="text-base text-indigo-600 font-black">{booking.totalPrice.toLocaleString('vi-VN')}đ</span>
+            <span className="text-base text-indigo-600 font-black">{formatCurrency(booking.totalPrice)}</span>
           </div>
         </div>
 

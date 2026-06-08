@@ -8,12 +8,20 @@ import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 export const MyBookingsPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(authApi.getCurrentUser());
+  const [cancelTargetId, setCancelTargetId] = useState<string | null>(null);
+  const [cancelLoading, setCancelLoading] = useState<boolean>(false);
   
   // Modal configurations for showing QR check-in
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -29,7 +37,9 @@ export const MyBookingsPage: React.FC = () => {
       .then((res) => {
         setBookings(res.data);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        toast.error('Không tải được vé', getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
   }, [user, navigate]);
 
@@ -39,25 +49,28 @@ export const MyBookingsPage: React.FC = () => {
   };
 
   const handleCancel = async (bookingId: string) => {
-    if (!window.confirm('Bạn chắc chắn muốn hủy booking này?')) return;
+    setCancelLoading(true);
     try {
       const res = await bookingApi.cancel(bookingId);
       const updatedBooking = res.data;
       if (updatedBooking) {
         setBookings((current) => current.map((item) => item.id === bookingId ? updatedBooking : item));
       }
-    } catch (err: any) {
-      alert(err.message || 'Lỗi hủy booking.');
+      toast.success('Đã hủy booking', 'Vé đã được giải phóng khỏi đơn đặt chỗ này.');
+      setCancelTargetId(null);
+    } catch (err) {
+      toast.error('Không thể hủy booking', getErrorMessage(err));
+    } finally {
+      setCancelLoading(false);
     }
   };
 
   const formatPrice = (price: number) => {
-    return `${price.toLocaleString('vi-VN')}đ`;
+    return formatCurrency(price);
   };
 
   const formatTime = (isoString: string) => {
-    const d = new Date(isoString);
-    return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+    return formatDate(isoString);
   };
 
   return (
@@ -82,7 +95,7 @@ export const MyBookingsPage: React.FC = () => {
         </div>
 
         {loading ? (
-          <Loading message="Đang nạp toàn bộ danh sách vé mua..." />
+          <TableSkeleton rows={4} />
         ) : bookings.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 py-12 shadow-sm">
             <EmptyState
@@ -158,7 +171,7 @@ export const MyBookingsPage: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCancel(booking.id)}
+                          onClick={() => setCancelTargetId(booking.id)}
                           className="w-full justify-center text-xs font-bold border-red-200 text-red-600 hover:bg-red-50 cursor-pointer"
                         >
                           Hủy booking
@@ -281,6 +294,18 @@ export const MyBookingsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(cancelTargetId)}
+        title="Cancel booking?"
+        description="Are you sure you want to cancel this booking? This action will release your tickets."
+        confirmText="Cancel booking"
+        cancelText="Keep booking"
+        variant="danger"
+        isLoading={cancelLoading}
+        onCancel={() => setCancelTargetId(null)}
+        onConfirm={() => cancelTargetId && handleCancel(cancelTargetId)}
+      />
 
     </div>
   );

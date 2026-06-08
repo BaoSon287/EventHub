@@ -8,9 +8,13 @@ import { NotificationItem } from '../components/NotificationItem';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { Button } from '../components/Button';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { useToast } from '../components/ui/ToastProvider';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(authApi.getCurrentUser());
@@ -20,7 +24,9 @@ export const NotificationsPage: React.FC = () => {
       .then((res) => {
         setNotifications(res.data);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        toast.error('Không tải được thông báo', getErrorMessage(err));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -35,18 +41,20 @@ export const NotificationsPage: React.FC = () => {
   const handleMarkRead = async (id: string) => {
     try {
       await notificationApi.markAsRead(id);
+      toast.success('Đã đánh dấu đã đọc');
       fetchNotifs();
     } catch (err) {
-      console.error(err);
+      toast.error('Không thể cập nhật thông báo', getErrorMessage(err));
     }
   };
 
   const handleMarkAllRead = async () => {
     try {
       await notificationApi.markAllAsRead();
+      toast.success('Đã đọc tất cả thông báo');
       fetchNotifs();
     } catch (err) {
-      console.error(err);
+      toast.error('Không thể cập nhật thông báo', getErrorMessage(err));
     }
   };
 
@@ -81,7 +89,7 @@ export const NotificationsPage: React.FC = () => {
 
         {/* Dynamic Items Content */}
         {loading ? (
-          <Loading message="Đang nạp danh sách thư báo..." />
+          <TableSkeleton rows={4} />
         ) : notifications.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 py-12 shadow-sm">
             <EmptyState
