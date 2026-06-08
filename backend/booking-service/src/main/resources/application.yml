@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: ${PORT:8084}
 spring:
   application:
     name: booking-service
@@ -29,7 +29,8 @@ springdoc:
     path: /swagger-ui.html
 eventhub:
   jwt:
-    secret: ${EVENTHUB_JWT_SECRET:eventhub-development-secret-key-change-me-32}
+    secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+  internal-api-key: ${INTERNAL_API_KEY:eventhub-internal-secret-change-me}
   rabbitmq:
     exchange: eventhub.exchange
     queues:

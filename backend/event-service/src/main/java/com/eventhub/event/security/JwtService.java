@@ -15,7 +15,7 @@ import java.util.Date;
 public class JwtService {
     private final SecretKey secretKey;
 
-    public JwtService(@Value("${eventhub.jwt.secret:eventhub-development-secret-key-change-me-32}") String secret) {
+    public JwtService(@Value("${eventhub.jwt.secret}") String secret) {
         this.secretKey = createKey(secret);
     }
 
@@ -25,7 +25,7 @@ public class JwtService {
             throw new IllegalArgumentException("Token expired");
         }
         return new CustomUserPrincipal(
-                claims.get("userId", Long.class),
+                ((Number) claims.get("userId")).longValue(),
                 claims.get("email", String.class),
                 claims.get("role", String.class)
         );

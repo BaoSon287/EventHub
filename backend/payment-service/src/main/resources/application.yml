@@ -1,5 +1,5 @@
 server:
-  port: 8086
+  port: ${PORT:8086}
 
 spring:
   application:
@@ -31,7 +31,8 @@ springdoc:
 
 eventhub:
   jwt:
-    secret: ${EVENTHUB_JWT_SECRET:eventhub-development-secret-key-change-me-32}
+    secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+  internal-api-key: ${INTERNAL_API_KEY:eventhub-internal-secret-change-me}
   rabbitmq:
     exchange: eventhub.exchange
     routing-keys:

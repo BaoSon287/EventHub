@@ -20,8 +20,8 @@ public class JwtService {
     private final long expirationMs;
 
     public JwtService(
-            @Value("${eventhub.jwt.secret:eventhub-development-secret-key-change-me-32}") String secret,
-            @Value("${eventhub.jwt.expiration-ms:86400000}") long expirationMs
+            @Value("${eventhub.jwt.secret}") String secret,
+            @Value("${eventhub.jwt.expiration-ms}") long expirationMs
     ) {
         this.secretKey = createKey(secret);
         this.expirationMs = expirationMs;

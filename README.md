@@ -122,9 +122,9 @@ RabbitMQ Management UI is available at http://localhost:15672 with username `eve
 
 Create demo accounts through the frontend Register page or the Auth API:
 
-- `organizer@example.com` / `123456` with role `ORGANIZER`
-- `user@example.com` / `123456` with role `USER`
-- `admin@example.com` / `123456` with role `ADMIN`
+- `organizer@example.com` / `Password123` with role `ORGANIZER`
+- `user@example.com` / `Password123` with role `USER`
+- `admin@example.com` / `Password123` with role `ADMIN`
 
 The backend seeds 8 published demo events automatically in Event Service without duplicating them on restart.
 
@@ -144,7 +144,7 @@ curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456",
+    "password": "Password123",
     "fullName": "Nguyen Van A",
     "phone": "0123456789",
     "role": "USER"
@@ -158,7 +158,7 @@ curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
-    "password": "123456"
+    "password": "Password123"
   }'
 ```
 
@@ -196,8 +196,10 @@ curl -X GET http://localhost:8080/api/auth/me \
 ## Project Documentation
 
 - Smoke test checklist: `docs/testing/smoke-test.md`
+- Security test checklist: `docs/testing/security-test.md`
 - Run guide: `docs/run-guide.md`
 - Smoke test script: `scripts/smoke-test.ps1`
+- Security smoke test script: `scripts/security-smoke-test.ps1`
 - Postman guide: `docs/postman/README.md`
 - Postman collection: `docs/postman/EventHub.postman_collection.json`
 - CV project description: `docs/cv-description.md`
@@ -488,6 +490,27 @@ curl -X PATCH http://localhost:8080/api/payments/1/mock-fail \
 ## Simple Saga Pattern
 
 Payment Service coordinates the mock payment workflow while Booking Service and Payment Service keep separate databases. Payment Service calls Booking Service through an internal API and publishes payment events to RabbitMQ. This is a simple Saga-style workflow for local development, not a complete distributed transaction implementation.
+
+## Security Design
+
+- JWT authentication is issued by Auth Service and includes `userId`, `email`, and `role` claims.
+- Backend services parse JWT claims for role-based access control across `USER`, `ORGANIZER`, and `ADMIN`.
+- API Gateway forwards the `Authorization` header and restricts CORS to `http://localhost:5173` and `http://localhost:3000` for local development.
+- Internal service endpoints such as `/api/events/internal/**`, `/api/bookings/internal/**`, and user profile creation require `X-Internal-Api-Key`.
+- Passwords are hashed with BCrypt and are never returned in API responses.
+- Register requires a password with at least 8 characters, at least one letter, and at least one number.
+- Request DTOs use Bean Validation and global exception handling avoids returning stack traces to clients.
+- API Gateway adds basic security headers: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, and `Referrer-Policy`.
+- Swagger is enabled for local development. Production should disable or protect Swagger endpoints.
+- Dev secrets are shown in Docker Compose for local use only. Production must use environment variables or a secret manager.
+
+Known security limitations:
+
+- JWT is stored in localStorage for demo simplicity.
+- Refresh token flow is not implemented yet.
+- Internal API key is simple service-to-service protection, not full mTLS or OAuth2 client credentials.
+- Rate limiting is not Redis-backed yet and should be added before production use.
+- Swagger should be disabled or protected in production.
 
 ## Known Limitations
 

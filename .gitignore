@@ -4,6 +4,8 @@ target/
 *.iml
 *.log
 .env
+*.env.local
+*.env
 .DS_Store
 docker-data/
 frontend/node_modules/

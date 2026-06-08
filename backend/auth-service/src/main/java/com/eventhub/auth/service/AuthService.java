@@ -57,15 +57,21 @@ public class AuthService {
                 .build());
 
         createUserProfile(user);
+        log.info("SECURITY_AUDIT action=REGISTER_SUCCESS userId={} role={}", user.getId(), user.getRole());
         return toAuthResponse(user);
     }
 
     public LoginResponse login(LoginRequest request) {
         AuthUser user = repository.findByEmail(request.email())
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    log.info("SECURITY_AUDIT action=LOGIN_FAILED email={}", request.email());
+                    return new UnauthorizedException("Invalid email or password");
+                });
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            log.info("SECURITY_AUDIT action=LOGIN_FAILED userId={} role={}", user.getId(), user.getRole());
             throw new UnauthorizedException("Invalid email or password");
         }
+        log.info("SECURITY_AUDIT action=LOGIN_SUCCESS userId={} role={}", user.getId(), user.getRole());
         return new LoginResponse(jwtService.generateToken(user), toAuthResponse(user));
     }
 

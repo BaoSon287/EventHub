@@ -3,6 +3,7 @@ package com.eventhub.event.controller;
 import com.eventhub.common.dto.ApiResponse;
 import com.eventhub.event.dto.InternalEventResponse;
 import com.eventhub.event.dto.TicketQuantityRequest;
+import com.eventhub.event.security.InternalApiKeyValidator;
 import com.eventhub.event.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,14 +15,20 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/events/internal")
 public class InternalEventController {
     private final EventService service;
+    private final InternalApiKeyValidator internalApiKeyValidator;
 
-    public InternalEventController(EventService service) {
+    public InternalEventController(EventService service, InternalApiKeyValidator internalApiKeyValidator) {
         this.service = service;
+        this.internalApiKeyValidator = internalApiKeyValidator;
     }
 
     @Operation(summary = "Get event data needed by booking-service")
     @GetMapping("/{eventId}")
-    public ApiResponse<InternalEventResponse> findInternalById(@PathVariable("eventId") Long eventId) {
+    public ApiResponse<InternalEventResponse> findInternalById(
+            @PathVariable("eventId") Long eventId,
+            @RequestHeader(name = "X-Internal-Api-Key", required = false) String internalApiKey
+    ) {
+        internalApiKeyValidator.requireValid(internalApiKey);
         return ApiResponse.success("Get internal event successfully", service.findInternalById(eventId));
     }
 
@@ -29,8 +36,10 @@ public class InternalEventController {
     @PatchMapping("/{eventId}/reserve-tickets")
     public ApiResponse<InternalEventResponse> reserveTickets(
             @PathVariable("eventId") Long eventId,
-            @Valid @RequestBody TicketQuantityRequest request
+            @Valid @RequestBody TicketQuantityRequest request,
+            @RequestHeader(name = "X-Internal-Api-Key", required = false) String internalApiKey
     ) {
+        internalApiKeyValidator.requireValid(internalApiKey);
         return ApiResponse.success("Reserve tickets successfully", service.reserveTickets(eventId, request));
     }
 
@@ -38,8 +47,10 @@ public class InternalEventController {
     @PatchMapping("/{eventId}/release-tickets")
     public ApiResponse<InternalEventResponse> releaseTickets(
             @PathVariable("eventId") Long eventId,
-            @Valid @RequestBody TicketQuantityRequest request
+            @Valid @RequestBody TicketQuantityRequest request,
+            @RequestHeader(name = "X-Internal-Api-Key", required = false) String internalApiKey
     ) {
+        internalApiKeyValidator.requireValid(internalApiKey);
         return ApiResponse.success("Release tickets successfully", service.releaseTickets(eventId, request));
     }
 }

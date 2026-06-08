@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: ${PORT:8081}
 
 spring:
   application:
@@ -26,5 +26,6 @@ springdoc:
 
 eventhub:
   jwt:
-    secret: ${EVENTHUB_JWT_SECRET:eventhub-development-secret-key-change-me-32}
-    expiration-ms: ${EVENTHUB_JWT_EXPIRATION_MS:86400000}
+    secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+    expiration-ms: ${JWT_EXPIRATION_MS:${EVENTHUB_JWT_EXPIRATION_MS:86400000}}
+  internal-api-key: ${INTERNAL_API_KEY:eventhub-internal-secret-change-me}

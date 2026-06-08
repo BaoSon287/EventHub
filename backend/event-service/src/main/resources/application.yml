@@ -1,5 +1,5 @@
 server:
-  port: 8083
+  port: ${PORT:8083}
 spring:
   application:
     name: event-service
@@ -20,4 +20,5 @@ springdoc:
 
 eventhub:
   jwt:
-    secret: ${EVENTHUB_JWT_SECRET:eventhub-development-secret-key-change-me-32}
+    secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+  internal-api-key: ${INTERNAL_API_KEY:eventhub-internal-secret-change-me}
