@@ -173,7 +173,8 @@ export const eventApi = {
       throw new Error(`Lỗi cập nhật sự kiện ${id}`);
     }
 
-    return axiosClient.put(`/api/events/${id}`, eventData);
+    const response = await axiosClient.put(`/api/events/${id}`, eventData);
+    return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 
   delete: async (id: string) => {
@@ -186,6 +187,7 @@ export const eventApi = {
       throw new Error(`Lỗi xóa sự kiện ${id}`);
     }
 
-    return axiosClient.delete(`/api/events/${id}`);
+    await axiosClient.delete(`/api/events/${id}`);
+    return { data: { success: true } };
   }
 };

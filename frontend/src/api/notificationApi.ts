@@ -48,7 +48,8 @@ export const notificationApi = {
       return { data: { success } };
     }
 
-    return axiosClient.patch(`/api/notifications/${id}/read`);
+    await axiosClient.patch(`/api/notifications/${id}/read`);
+    return { data: { success: true } };
   },
 
   markAllAsRead: async () => {
@@ -65,7 +66,7 @@ export const notificationApi = {
     await Promise.all(
       notifications.data
         .filter((notification) => !notification.read)
-        .map((notification) => axiosClient.patch(`/api/notifications/${notification.id}/read`))
+        .map((notification) => notificationApi.markAsRead(notification.id))
     );
     return { data: { success: true } };
   }

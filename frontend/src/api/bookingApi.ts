@@ -42,6 +42,18 @@ const toUiBooking = (booking: BackendBooking): Booking => ({
 
 export const bookingApi = {
   create: async (bookingData: { eventId: string; quantity: number; ticketType: 'standard' | 'vip' }) => {
+    if (bookingData.quantity <= 0) {
+      throw new Error('Số lượng vé phải lớn hơn 0.');
+    }
+
+    if (getApiMode() !== 'mock') {
+      const response = await axiosClient.post('/api/bookings', {
+        eventId: toNumberId(bookingData.eventId),
+        quantity: bookingData.quantity
+      });
+      return { data: toUiBooking(unwrap<BackendBooking>(response)) };
+    }
+
     const userStr = localStorage.getItem('eventhub_current_user');
     const user = userStr ? JSON.parse(userStr) : null;
     const userId = user?.id || 'anonymous';
@@ -58,29 +70,21 @@ export const bookingApi = {
     const unitPrice = Math.round(event.price * priceFactor);
     const totalPrice = unitPrice * bookingData.quantity;
 
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const booking = MockDatabase.createBooking({
-        eventId: bookingData.eventId,
-        eventTitle: event.title,
-        eventImage: event.image,
-        eventDate: event.date,
-        eventLocation: event.location,
-        userId,
-        userEmail,
-        userName,
-        quantity: bookingData.quantity,
-        totalPrice,
-        ticketType: bookingData.ticketType,
-      });
-      return { data: booking };
-    }
-
-    const response = await axiosClient.post('/api/bookings', {
-      eventId: toNumberId(bookingData.eventId),
-      quantity: bookingData.quantity
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const booking = MockDatabase.createBooking({
+      eventId: bookingData.eventId,
+      eventTitle: event.title,
+      eventImage: event.image,
+      eventDate: event.date,
+      eventLocation: event.location,
+      userId,
+      userEmail,
+      userName,
+      quantity: bookingData.quantity,
+      totalPrice,
+      ticketType: bookingData.ticketType,
     });
-    return { data: toUiBooking(unwrap<BackendBooking>(response)) };
+    return { data: booking };
   },
 
   getMyBookings: async () => {

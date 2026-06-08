@@ -67,7 +67,7 @@ export const authApi = {
       await new Promise((resolve) => setTimeout(resolve, 800));
       
       // Check duplicate
-      const existing = MockDatabase.getUserByUsername(userData.username);
+      const existing = MockDatabase.getUsers().find((user) => user.username === userData.username || user.email === userData.email);
       if (existing) {
         throw new Error('Tên đăng nhập đã tồn tại trong hệ thống.');
       }
@@ -82,13 +82,8 @@ export const authApi = {
       };
 
       MockDatabase.addUser(newUser);
-      
-      // Auto login in mock
-      const token = `mock-jwt-token-for-${newUser.id}`;
-      localStorage.setItem('eventhub_access_token', token);
-      localStorage.setItem('eventhub_current_user', JSON.stringify(newUser));
 
-      return { data: { accessToken: token, user: newUser } };
+      return { data: { accessToken: '', user: newUser } };
     }
 
     const role = userData.role === 'organizer' ? 'ORGANIZER' : 'USER';
@@ -99,9 +94,7 @@ export const authApi = {
       role
     });
     const user = toUiUser(unwrap<BackendUser>(response));
-    localStorage.setItem('eventhub_current_user', JSON.stringify(user));
-    const loginResponse = await authApi.login(userData.email, userData.password);
-    return loginResponse;
+    return { data: { accessToken: '', user } };
   },
 
   logout: () => {

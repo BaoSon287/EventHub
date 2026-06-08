@@ -35,8 +35,7 @@ export const PaymentPage: React.FC = () => {
         }
       })
       .catch((err) => {
-        console.error(err);
-        setError('Phiếu đăng ký đặt vé không tồn tại hoặc đã bị hủy.');
+        setError(getErrorMessage(err, 'Phiếu đăng ký đặt vé không tồn tại hoặc đã bị hủy.'));
       })
       .finally(() => setLoading(false));
   }, [bookingId]);

@@ -45,10 +45,24 @@ export const CreateEventPage: React.FC = () => {
     setImage(unsplashPresets[cat]);
   };
 
+  const getTimeRange = () => {
+    const [start = '', end = ''] = time.split('-').map((part) => part.trim());
+    return { start, end };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !description || !content || !location || !date || !time) {
+    const { start, end } = getTimeRange();
+    if (!title.trim() || !description.trim() || !content.trim() || !location.trim() || !date || !start || !end) {
       setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      return;
+    }
+    if (capacity < 0 || price < 0 || Number.isNaN(capacity) || Number.isNaN(price)) {
+      setError('Số lượng vé và giá vé không được âm.');
+      return;
+    }
+    if (`${date}T${start}:00` >= `${date}T${end}:00`) {
+      setError('Thời gian bắt đầu phải trước thời gian kết thúc.');
       return;
     }
 
@@ -149,7 +163,7 @@ export const CreateEventPage: React.FC = () => {
               <input
                 type="number"
                 value={capacity}
-                onChange={(e) => setCapacity(parseInt(e.target.value))}
+                onChange={(e) => setCapacity(Number(e.target.value || 0))}
                 className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
               />
             </div>
@@ -191,7 +205,7 @@ export const CreateEventPage: React.FC = () => {
             <input
               type="number"
               value={price}
-              onChange={(e) => setPrice(parseInt(e.target.value))}
+              onChange={(e) => setPrice(Number(e.target.value || 0))}
               className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
           </div>

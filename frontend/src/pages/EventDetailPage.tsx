@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Tag, Users, ShieldAlert, CheckCircle, ArrowLeft, Heart, Share2, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, Users, ShieldAlert, ArrowLeft, Sparkles } from 'lucide-react';
 import { eventApi } from '../api/eventApi';
 import { bookingApi } from '../api/bookingApi';
 import { authApi } from '../api/authApi';
 import { Event, User } from '../api/mockDb';
-import { Loading } from '../components/Loading';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
 import { EventImage } from '../components/EventImage';
@@ -22,13 +21,12 @@ export const EventDetailPage: React.FC = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(authApi.getCurrentUser());
+  const [user] = useState<User | null>(authApi.getCurrentUser());
   
   // Custom Booking configurations
   const [ticketType, setTicketType] = useState<'standard' | 'vip'>('standard');
   const [quantity, setQuantity] = useState<number>(1);
   const [bookingLoading, setBookingLoading] = useState<boolean>(false);
-  const [isLiked, setIsLiked] = useState<boolean>(false);
 
   useEffect(() => {
     if (!id) return;
@@ -38,8 +36,7 @@ export const EventDetailPage: React.FC = () => {
         setEvent(res.data);
       })
       .catch((err) => {
-        console.error(err);
-        setError('Sự kiện không tồn tại hoặc đã bị ẩn.');
+        setError(getErrorMessage(err, 'Sự kiện không tồn tại hoặc đã bị ẩn.'));
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -64,13 +61,20 @@ export const EventDetailPage: React.FC = () => {
   const priceFactor = ticketType === 'vip' ? 1.5 : 1.0;
   const unitPrice = Math.round(event.price * priceFactor);
   const totalPrice = unitPrice * quantity;
-  const isSoldOut = event.booked >= event.capacity;
+  const availableTickets = Math.max(0, event.capacity - event.booked);
+  const maxQuantity = Math.max(1, Math.min(10, availableTickets));
+  const isSoldOut = availableTickets <= 0;
 
   const handleBooking = async () => {
     if (!user) {
       // Guide profile login with redirect back URL
       toast.info('Vui lòng đăng nhập', 'Bạn cần đăng nhập trước khi đặt vé.');
       navigate(`/login?redirect=${encodeURIComponent(`/events/${event.id}`)}`);
+      return;
+    }
+
+    if (quantity > availableTickets) {
+      toast.error('Không đủ vé', 'Số lượng vé bạn chọn vượt quá số vé còn lại.');
       return;
     }
 
@@ -263,8 +267,9 @@ export const EventDetailPage: React.FC = () => {
                 <span className="px-5 text-sm font-bold text-slate-700">{quantity}</span>
                 <button
                   type="button"
-                  onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                  className="px-3 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold border-l border-slate-200 transition"
+                  onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                  disabled={quantity >= maxQuantity}
+                  className="px-3 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 text-sm font-bold border-l border-slate-200 transition disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   +
                 </button>
