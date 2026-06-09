@@ -2,21 +2,6 @@ import axios, { AxiosError } from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-export const getApiMode = (): 'real' | 'mock' => {
-  const stored = localStorage.getItem('eventhub_api_mode');
-  if (stored === 'real' || stored === 'mock') {
-    return stored;
-  }
-
-  const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-  return isCloud ? 'mock' : 'real';
-};
-
-export const setApiMode = (mode: 'real' | 'mock') => {
-  localStorage.setItem('eventhub_api_mode', mode);
-  window.dispatchEvent(new Event('storage'));
-};
-
 const axiosClient = axios.create({
   baseURL: BACKEND_URL,
   headers: {

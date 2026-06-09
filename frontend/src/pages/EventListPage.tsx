@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { eventApi } from '../api/eventApi';
-import { Event } from '../api/mockDb';
+import { Event } from '../types/domain';
 import { EventCard } from '../components/EventCard';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';

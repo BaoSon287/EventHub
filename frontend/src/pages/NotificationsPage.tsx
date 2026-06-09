@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, CheckSquare, Sparkles, MessageSquareDot } from 'lucide-react';
 import { notificationApi } from '../api/notificationApi';
 import { authApi } from '../api/authApi';
-import { Notification, User } from '../api/mockDb';
+import { Notification, User } from '../types/domain';
 import { NotificationItem } from '../components/NotificationItem';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';

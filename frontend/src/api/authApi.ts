@@ -1,6 +1,6 @@
-import axiosClient, { getApiMode } from './axiosClient';
+import axiosClient from './axiosClient';
 import { unwrap } from './apiUtils';
-import { MockDatabase, User } from './mockDb';
+import { User } from '../types/domain';
 import { userApi } from './userApi';
 
 type BackendUser = {
@@ -35,22 +35,6 @@ const toUiUser = (user: BackendUser): User => ({
 
 export const authApi = {
   login: async (username: string, password: string) => {
-    if (getApiMode() === 'mock') {
-      // Simulate network latency
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const user = MockDatabase.getUserByUsername(username);
-      
-      // Let's check password. In mock, any corresponding user succeeds if password is user+"123"
-      if (user && password === `${username}123`) {
-        const token = `mock-jwt-token-for-${user.id}`;
-        localStorage.setItem('eventhub_access_token', token);
-        localStorage.setItem('eventhub_current_user', JSON.stringify(user));
-        return { data: { accessToken: token, user } };
-      }
-      throw new Error('Tên đăng nhập hoặc mật khẩu không chính xác.');
-    }
-
-    // Real API Call
     const response = await axiosClient.post('/api/auth/login', { email: username, password });
     const data = unwrap<LoginResponse>(response);
     let user = toUiUser(data.user);
@@ -63,29 +47,6 @@ export const authApi = {
   },
 
   register: async (userData: { username: string; email: string; name: string; password: string; role: 'organizer' | 'attendee' }) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      // Check duplicate
-      const existing = MockDatabase.getUsers().find((user) => user.username === userData.username || user.email === userData.email);
-      if (existing) {
-        throw new Error('Tên đăng nhập đã tồn tại trong hệ thống.');
-      }
-
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        username: userData.username,
-        email: userData.email,
-        name: userData.name,
-        role: userData.role,
-        avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 1000000)}?auto=format&fit=crop&q=80&w=150`,
-      };
-
-      MockDatabase.addUser(newUser);
-
-      return { data: { accessToken: '', user: newUser } };
-    }
-
     const role = userData.role === 'organizer' ? 'ORGANIZER' : 'USER';
     const response = await axiosClient.post('/api/auth/register', {
       email: userData.email,

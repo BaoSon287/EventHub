@@ -1,6 +1,6 @@
-import axiosClient, { getApiMode } from './axiosClient';
+import axiosClient from './axiosClient';
 import { toNumberId, unwrap } from './apiUtils';
-import { MockDatabase, Booking } from './mockDb';
+import { Booking } from '../types/domain';
 
 type BackendBooking = {
   id: number;
@@ -46,83 +46,31 @@ export const bookingApi = {
       throw new Error('Số lượng vé phải lớn hơn 0.');
     }
 
-    if (getApiMode() !== 'mock') {
-      const response = await axiosClient.post('/api/bookings', {
-        eventId: toNumberId(bookingData.eventId),
-        quantity: bookingData.quantity
-      });
-      return { data: toUiBooking(unwrap<BackendBooking>(response)) };
-    }
-
-    const userStr = localStorage.getItem('eventhub_current_user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    const userId = user?.id || 'anonymous';
-    const userEmail = user?.email || '';
-    const userName = user?.name || '';
-
-    // fetch event to calculate prices and get image/title
-    const event = MockDatabase.getEventById(bookingData.eventId);
-    if (!event) {
-      throw new Error('Sự kiện đặt vé không tồn tại.');
-    }
-
-    const priceFactor = bookingData.ticketType === 'vip' ? 1.5 : 1.0;
-    const unitPrice = Math.round(event.price * priceFactor);
-    const totalPrice = unitPrice * bookingData.quantity;
-
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const booking = MockDatabase.createBooking({
-      eventId: bookingData.eventId,
-      eventTitle: event.title,
-      eventImage: event.image,
-      eventDate: event.date,
-      eventLocation: event.location,
-      userId,
-      userEmail,
-      userName,
-      quantity: bookingData.quantity,
-      totalPrice,
-      ticketType: bookingData.ticketType,
+    const response = await axiosClient.post('/api/bookings', {
+      eventId: toNumberId(bookingData.eventId),
+      quantity: bookingData.quantity
     });
-    return { data: booking };
+    return { data: toUiBooking(unwrap<BackendBooking>(response)) };
   },
 
   getMyBookings: async () => {
-    const userStr = localStorage.getItem('eventhub_current_user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    const userId = user?.id || '';
-
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const bookings = MockDatabase.getBookings().filter(b => b.userId === userId);
-      return { data: bookings };
-    }
-
     const response = await axiosClient.get('/api/bookings/me');
     return { data: unwrap<BookingPage>(response).content.map(toUiBooking) };
   },
 
-  getById: async (id: string) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      const booking = MockDatabase.getBookingById(id);
-      if (booking) {
-        return { data: booking };
-      }
-      throw new Error(`Không tìm thấy đơn hàng với ID ${id}`);
-    }
+  getByEvent: async (eventId: string) => {
+    const response = await axiosClient.get(`/api/bookings/event/${toNumberId(eventId)}`, {
+      params: { size: 100 }
+    });
+    return { data: unwrap<BookingPage>(response).content.map(toUiBooking) };
+  },
 
+  getById: async (id: string) => {
     const response = await axiosClient.get(`/api/bookings/${toNumberId(id)}`);
     return { data: toUiBooking(unwrap<BackendBooking>(response)) };
   },
 
   cancel: async (id: string) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const booking = MockDatabase.updateBookingStatus(id, 'cancelled');
-      return { data: booking };
-    }
-
     const response = await axiosClient.patch(`/api/bookings/${toNumberId(id)}/cancel`);
     return { data: toUiBooking(unwrap<BackendBooking>(response)) };
   }

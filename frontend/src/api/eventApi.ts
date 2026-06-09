@@ -1,6 +1,6 @@
-import axiosClient, { getApiMode } from './axiosClient';
+import axiosClient from './axiosClient';
 import { unwrap } from './apiUtils';
-import { MockDatabase, Event } from './mockDb';
+import { Event } from '../types/domain';
 
 type BackendEvent = {
   id: number;
@@ -67,18 +67,23 @@ const toUiEvent = (event: BackendEvent): Event => {
   };
 };
 
+const toBackendEventPayload = (eventData: Partial<Event>) => ({
+  title: eventData.title,
+  description: eventData.description,
+  category: eventData.category,
+  location: eventData.location,
+  address: eventData.location,
+  city: eventData.location,
+  startTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(0, 5) || '09:00'}:00` : undefined,
+  endTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(-5) || '17:00'}:00` : undefined,
+  totalTickets: eventData.capacity,
+  price: eventData.price,
+  imageUrl: eventData.image,
+  status: eventData.status === 'cancelled' ? 'CANCELLED' : eventData.status === 'completed' ? 'COMPLETED' : 'PUBLISHED'
+});
+
 export const eventApi = {
   uploadEventImage: async (file: File): Promise<UploadImageResponse> => {
-    if (getApiMode() === 'mock') {
-      const imageUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read image'));
-        reader.onerror = () => reject(new Error('Could not read image'));
-        reader.readAsDataURL(file);
-      });
-      return { imageUrl, fileName: file.name };
-    }
-
     const formData = new FormData();
     formData.append('file', file);
     const response = await axiosClient.post('/api/events/images/upload', formData);
@@ -86,24 +91,6 @@ export const eventApi = {
   },
 
   getAll: async (params?: { category?: string; search?: string }) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      let events = MockDatabase.getEvents();
-      
-      if (params?.category && params.category !== 'all') {
-        events = events.filter(e => e.category === params.category);
-      }
-      if (params?.search) {
-        const query = params.search.toLowerCase();
-        events = events.filter(e => 
-          e.title.toLowerCase().includes(query) || 
-          e.description.toLowerCase().includes(query) ||
-          e.location.toLowerCase().includes(query)
-        );
-      }
-      return { data: events };
-    }
-
     const response = await axiosClient.get('/api/events', {
       params: {
         keyword: params?.search,
@@ -114,79 +101,28 @@ export const eventApi = {
   },
 
   getById: async (id: string) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      const event = MockDatabase.getEventById(id);
-      if (event) {
-        return { data: event };
-      }
-      throw new Error(`Không tìm thấy sự kiện với ID ${id}`);
-    }
-
     const response = await axiosClient.get(`/api/events/${id}`);
     return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 
-  create: async (eventData: Omit<Event, 'id' | 'booked' | 'organizerId' | 'organizerName'>) => {
-    // Determine current user
-    const userStr = localStorage.getItem('eventhub_current_user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    const organizerId = user?.id || 'unknown';
-    const organizerName = user?.name || 'Đối tác EventHub';
-
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const newEvent = MockDatabase.createEvent({
-        ...eventData,
-        organizerId,
-        organizerName
-      });
-      return { data: newEvent };
-    }
-
-    const response = await axiosClient.post('/api/events', {
-      title: eventData.title,
-      description: eventData.description,
-      category: eventData.category,
-      location: eventData.location,
-      address: eventData.location,
-      city: eventData.location,
-      startTime: `${eventData.date}T${eventData.time?.slice(0, 5) || '09:00'}:00`,
-      endTime: `${eventData.date}T${eventData.time?.slice(-5) || '17:00'}:00`,
-      totalTickets: eventData.capacity,
-      price: eventData.price,
-      imageUrl: eventData.image,
-      status: 'PUBLISHED',
-      organizerId,
-      organizerName
+  getByOrganizer: async (organizerId: string) => {
+    const response = await axiosClient.get(`/api/events/organizer/${organizerId}`, {
+      params: { size: 100 }
     });
+    return { data: unwrap<PageResponse<BackendEvent>>(response).content.map(toUiEvent) };
+  },
+
+  create: async (eventData: Omit<Event, 'id' | 'booked' | 'organizerId' | 'organizerName'>) => {
+    const response = await axiosClient.post('/api/events', toBackendEventPayload(eventData));
     return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 
   update: async (id: string, eventData: Partial<Event>) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const updated = MockDatabase.updateEvent(id, eventData);
-      if (updated) {
-        return { data: updated };
-      }
-      throw new Error(`Lỗi cập nhật sự kiện ${id}`);
-    }
-
-    const response = await axiosClient.put(`/api/events/${id}`, eventData);
+    const response = await axiosClient.put(`/api/events/${id}`, toBackendEventPayload(eventData));
     return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 
   delete: async (id: string) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      const success = MockDatabase.deleteEvent(id);
-      if (success) {
-        return { data: { success: true } };
-      }
-      throw new Error(`Lỗi xóa sự kiện ${id}`);
-    }
-
     await axiosClient.delete(`/api/events/${id}`);
     return { data: { success: true } };
   }

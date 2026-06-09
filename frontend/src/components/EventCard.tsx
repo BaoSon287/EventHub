@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Tag } from 'lucide-react';
-import { Event } from '../api/mockDb';
+import { Event } from '../types/domain';
 import { StatusBadge } from './StatusBadge';
 import { EventImage } from './EventImage';
 

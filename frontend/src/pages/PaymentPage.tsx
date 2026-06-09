@@ -4,7 +4,7 @@ import { CreditCard, Wallet, Banknote, ShieldAlert, CheckCircle, RefreshCw, Smar
 import { bookingApi } from '../api/bookingApi';
 import { paymentApi } from '../api/paymentApi';
 import { authApi } from '../api/authApi';
-import { Booking } from '../api/mockDb';
+import { Booking } from '../types/domain';
 import { Loading } from '../components/Loading';
 import { Button } from '../components/Button';
 import { useToast } from '../components/ui/ToastProvider';
@@ -44,13 +44,17 @@ export const PaymentPage: React.FC = () => {
     if (!bookingId || !booking) return;
     setPaymentLoading(true);
     try {
-      await paymentApi.pay({
+      const result = await paymentApi.pay({
         bookingId,
         paymentMethod,
         amount: booking.totalPrice
       });
-      setPaymentSuccess(true);
-      toast.success('Thanh toán thành công', 'Vé của bạn đã sẵn sàng trong mục My Tickets.');
+      if (result.data.success) {
+        setPaymentSuccess(true);
+        toast.success('Thanh toán thành công', 'Vé của bạn đã sẵn sàng trong mục My Tickets.');
+      } else {
+        toast.info('Đã tạo giao dịch thanh toán', result.data.message);
+      }
     } catch (err) {
       toast.error('Thanh toán thất bại', getErrorMessage(err));
     } finally {
@@ -239,7 +243,7 @@ export const PaymentPage: React.FC = () => {
 
                 {paymentMethod === 'card' && (
                   <div className="space-y-3 font-semibold text-xs">
-                    <p className="font-bold text-slate-850 mb-1">Mẫu điền số thẻ Visa/Mastercard (Mô phỏng)</p>
+                    <p className="font-bold text-slate-850 mb-1">Mẫu điền số thẻ Visa/Mastercard</p>
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-3">
                         <input

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.5
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './pages/HomePage';
@@ -18,7 +18,6 @@ import { OrganizerDashboardPage } from './pages/OrganizerDashboardPage';
 import { CreateEventPage } from './pages/CreateEventPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { MockDatabase } from './api/mockDb';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ToastProvider } from './components/ui/ToastProvider';
 
@@ -44,11 +43,6 @@ const FullBleedLayout = () => {
 };
 
 export default function App() {
-  useEffect(() => {
-    // Make sure Mock DB is seeded upon main workspace bootstrap in case backend is unreachable
-    MockDatabase.init();
-  }, []);
-
   return (
     <ToastProvider>
       <BrowserRouter>

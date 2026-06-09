@@ -1,5 +1,5 @@
-import { Booking, Event, Notification, User } from '../api/mockDb';
-import { DemoPayment } from '../data/demoAnalytics';
+import { Booking, Event, Notification, User } from '../types/domain';
+import { PaymentRecord } from '../api/paymentApi';
 
 export interface DayMetric {
   date: string;
@@ -32,7 +32,7 @@ export const groupBookingsByDay = (bookings: Booking[]): Array<{ date: string; b
     .sort((a, b) => a.date.localeCompare(b.date));
 };
 
-export const groupRevenueByDay = (items: Array<Booking | DemoPayment>): Array<{ date: string; revenue: number }> => {
+export const groupRevenueByDay = (items: Array<Booking | PaymentRecord>): Array<{ date: string; revenue: number }> => {
   const map = new Map<string, number>();
   items.forEach((item) => {
     const isPayment = 'amount' in item;
@@ -60,7 +60,7 @@ export const countByStatus = <T extends Record<string, any>>(items: T[], fieldNa
   return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
 };
 
-export const calculateOrganizerStats = (events: Event[], bookings: Booking[], payments: DemoPayment[] = []) => {
+export const calculateOrganizerStats = (events: Event[], bookings: Booking[], payments: PaymentRecord[] = []) => {
   const paidBookings = bookings.filter((booking) => booking.status === 'paid');
   const paidPayments = payments.filter((payment) => payment.status === 'PAID');
 
@@ -82,7 +82,7 @@ export const calculateAdminStats = (
   users: User[],
   events: Event[],
   bookings: Booking[],
-  payments: DemoPayment[],
+  payments: PaymentRecord[],
   notifications: Notification[]
 ) => ({
   totalUsers: users.length,

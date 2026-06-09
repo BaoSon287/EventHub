@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Flame, Music, Cpu, Palette, Pizza, Trophy, ArrowRight, ShieldCheck, HeartHandshake, Zap, Sparkles } from 'lucide-react';
 import { eventApi } from '../api/eventApi';
-import { Event } from '../api/mockDb';
+import { Event } from '../types/domain';
 import { EventCard } from '../components/EventCard';
 import { Loading } from '../components/Loading';
 import { EventCardSkeleton } from '../components/ui/Skeleton';
@@ -96,7 +96,7 @@ export const HomePage: React.FC = () => {
             </form>
           </div>
 
-          {/* Hero Right Mock Image */}
+          {/* Hero image */}
           <div className="lg:col-span-5 hidden lg:block relative">
             <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl border border-indigo-400/20 transform rotate-2 hover:rotate-0 transition-transform duration-500">
               <img

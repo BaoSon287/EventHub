@@ -1,6 +1,6 @@
-import axiosClient, { getApiMode } from './axiosClient';
+import axiosClient from './axiosClient';
 import { unwrap } from './apiUtils';
-import { MockDatabase, User } from './mockDb';
+import { User } from '../types/domain';
 
 type BackendProfile = {
   id: number;
@@ -22,10 +22,6 @@ const applyProfile = (user: User, profile: BackendProfile): User => ({
 
 export const userApi = {
   syncCurrentProfile: async (user: User): Promise<User> => {
-    if (getApiMode() === 'mock') {
-      return MockDatabase.getUserByUsername(user.username) || user;
-    }
-
     try {
       const response = await axiosClient.get(`/api/users/auth/${user.id}`);
       return applyProfile(user, unwrap<BackendProfile>(response));
@@ -35,13 +31,6 @@ export const userApi = {
   },
 
   updateCurrentProfile: async (user: User): Promise<User> => {
-    if (getApiMode() === 'mock') {
-      const updated = MockDatabase.updateUser(user.id, user) || user;
-      localStorage.setItem('eventhub_current_user', JSON.stringify(updated));
-      window.dispatchEvent(new Event('storage'));
-      return updated;
-    }
-
     const profileResponse = await axiosClient.get(`/api/users/auth/${user.id}`);
     const profile = unwrap<BackendProfile>(profileResponse);
     const updateResponse = await axiosClient.put(`/api/users/${profile.id}`, {

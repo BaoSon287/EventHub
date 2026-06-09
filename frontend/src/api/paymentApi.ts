@@ -1,46 +1,69 @@
-import axiosClient, { getApiMode } from './axiosClient';
+import axiosClient from './axiosClient';
 import { toNumberId, unwrap } from './apiUtils';
-import { MockDatabase } from './mockDb';
 
-type PaymentResponse = {
+type BackendPayment = {
   id: number;
   paymentCode: string;
   bookingId: number;
+  bookingCode?: string;
+  amount: number;
   status: string;
+  createdAt: string;
+};
+
+type PaymentPage = {
+  content: BackendPayment[];
+};
+
+export type PaymentRecord = {
+  id: string;
+  bookingId: string;
+  eventTitle: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+};
+
+const toPaymentRecord = (payment: BackendPayment): PaymentRecord => ({
+  id: String(payment.id),
+  bookingId: String(payment.bookingId),
+  eventTitle: payment.bookingCode || `Booking #${payment.bookingId}`,
+  amount: Number(payment.amount || 0),
+  status: payment.status,
+  createdAt: payment.createdAt
+});
+
+const toBackendMethod = (method: string) => {
+  if (method === 'card') return 'STRIPE';
+  if (method === 'banking' || method === 'momo') return 'VNPAY';
+  return 'CASH';
 };
 
 export const paymentApi = {
   pay: async (paymentData: { bookingId: string; paymentMethod: string; amount: number }) => {
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Update booking status in simulation
-      const updatedBooking = MockDatabase.updateBookingStatus(paymentData.bookingId, 'paid');
-      if (updatedBooking) {
-        return { 
-          data: { 
-            success: true, 
-            message: 'Thanh toán thành công qua cổng EventPay!',
-            transactionId: `txn-${Date.now()}`,
-            booking: updatedBooking 
-          } 
-        };
-      }
-      throw new Error('Đơn đặt vé không hợp lệ hoặc đã thanh toán trước đó.');
-    }
-
-    const created = unwrap<PaymentResponse>(await axiosClient.post('/api/payments', {
+    const payment = unwrap<BackendPayment>(await axiosClient.post('/api/payments', {
       bookingId: toNumberId(paymentData.bookingId),
-      method: 'MOCK'
+      method: toBackendMethod(paymentData.paymentMethod)
     }));
-    const paid = unwrap<PaymentResponse>(await axiosClient.patch(`/api/payments/${created.id}/mock-success`));
     return {
       data: {
-        success: paid.status === 'SUCCESS',
-        message: 'Thanh toán thành công qua EventHub.',
-        transactionId: paid.paymentCode,
-        booking: { id: String(paid.bookingId), status: 'paid' }
+        success: payment.status === 'SUCCESS',
+        message: 'Giao dịch thanh toán đã được tạo và đang chờ xử lý.',
+        transactionId: payment.paymentCode,
+        booking: { id: String(payment.bookingId), status: payment.status === 'SUCCESS' ? 'paid' : 'pending_payment' }
       }
     };
+  },
+
+  getMyPayments: async () => {
+    const response = await axiosClient.get('/api/payments/me', { params: { size: 100 } });
+    return { data: unwrap<PaymentPage>(response).content.map(toPaymentRecord) };
+  },
+
+  getByBooking: async (bookingId: string) => {
+    const response = await axiosClient.get(`/api/payments/booking/${toNumberId(bookingId)}`, {
+      params: { size: 100 }
+    });
+    return { data: unwrap<PaymentPage>(response).content.map(toPaymentRecord) };
   }
 };

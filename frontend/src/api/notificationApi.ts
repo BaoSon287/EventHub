@@ -1,6 +1,6 @@
-import axiosClient, { getApiMode } from './axiosClient';
+import axiosClient from './axiosClient';
 import { unwrap } from './apiUtils';
-import { MockDatabase, Notification } from './mockDb';
+import { Notification } from '../types/domain';
 
 type BackendNotification = {
   id: number;
@@ -32,36 +32,22 @@ export const notificationApi = {
     const user = userStr ? JSON.parse(userStr) : null;
     const userId = user?.id || '';
 
-    if (getApiMode() === 'mock') {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const notifications = MockDatabase.getNotifications().filter(n => n.userId === userId);
-      return { data: notifications };
+    if (!userId) {
+      return { data: [] };
     }
 
-    const response = await axiosClient.get(`/api/notifications/user/${userId}`);
+    const response = await axiosClient.get(`/api/notifications/user/${userId}`, {
+      params: { size: 100 }
+    });
     return { data: unwrap<NotificationPage>(response).content.map(toUiNotification) };
   },
 
   markAsRead: async (id: string) => {
-    if (getApiMode() === 'mock') {
-      const success = MockDatabase.markNotificationRead(id);
-      return { data: { success } };
-    }
-
     await axiosClient.patch(`/api/notifications/${id}/read`);
     return { data: { success: true } };
   },
 
   markAllAsRead: async () => {
-    const userStr = localStorage.getItem('eventhub_current_user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    const userId = user?.id || '';
-
-    if (getApiMode() === 'mock') {
-      const success = MockDatabase.markAllNotificationsRead(userId);
-      return { data: { success } };
-    }
-
     const notifications = await notificationApi.getAll();
     await Promise.all(
       notifications.data

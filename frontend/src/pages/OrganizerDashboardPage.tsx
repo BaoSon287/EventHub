@@ -11,9 +11,11 @@ import {
   Users,
   WalletCards,
 } from 'lucide-react';
-import { eventApi } from '../api/eventApi';
 import { authApi } from '../api/authApi';
-import { Booking, Event, MockDatabase, User } from '../api/mockDb';
+import { bookingApi } from '../api/bookingApi';
+import { eventApi } from '../api/eventApi';
+import { paymentApi, PaymentRecord } from '../api/paymentApi';
+import { Booking, Event, User } from '../types/domain';
 import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -34,52 +36,49 @@ import {
   groupBookingsByDay,
   groupRevenueByDay,
 } from '../utils/analyticsUtils';
-import { getErrorMessage } from '../utils/getErrorMessage';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { buildDemoBookingsFromEvents, buildDemoPaymentsFromBookings, DemoPayment } from '../data/demoAnalytics';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 export const OrganizerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [payments, setPayments] = useState<DemoPayment[]>([]);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isDemoAnalytics, setIsDemoAnalytics] = useState<boolean>(false);
   const [user] = useState<User | null>(authApi.getCurrentUser());
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
-  const fetchOrganizerEvents = () => {
+  const fetchOrganizerEvents = async () => {
     if (!user) return;
     setLoading(true);
-    eventApi.getAll()
-      .then((res) => {
-        const allEvents = res.data;
-        const organizerEvents = user.role === 'admin'
-          ? allEvents
-          : allEvents.filter((event: Event) => event.organizerId === user.id);
-        const eventIds = new Set(organizerEvents.map((event) => event.id));
-        const mockBookings = MockDatabase.getBookings().filter((booking) => eventIds.has(booking.eventId));
-        const analyticsBookings = mockBookings.length ? mockBookings : buildDemoBookingsFromEvents(organizerEvents);
-        const analyticsPayments = buildDemoPaymentsFromBookings(analyticsBookings);
 
-        setEvents(organizerEvents);
-        setBookings(analyticsBookings);
-        setPayments(analyticsPayments);
-        setIsDemoAnalytics(mockBookings.length === 0);
-      })
-      .catch((err) => {
-        const message = getErrorMessage(err);
-        toast.error('Không tải được dashboard', message);
-        const fallbackEvents = MockDatabase.getEvents().filter((event) => user.role === 'admin' || event.organizerId === user.id);
-        const fallbackBookings = buildDemoBookingsFromEvents(fallbackEvents);
-        setEvents(fallbackEvents);
-        setBookings(fallbackBookings);
-        setPayments(buildDemoPaymentsFromBookings(fallbackBookings));
-        setIsDemoAnalytics(true);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const eventResponse = user.role === 'admin'
+        ? await eventApi.getAll()
+        : await eventApi.getByOrganizer(user.id);
+      const organizerEvents = eventResponse.data;
+      const bookingResults = await Promise.allSettled(
+        organizerEvents.map((event) => bookingApi.getByEvent(event.id))
+      );
+      const eventBookings = bookingResults.flatMap((result) => result.status === 'fulfilled' ? result.value.data : []);
+      const paymentResults = await Promise.allSettled(
+        eventBookings.map((booking) => paymentApi.getByBooking(booking.id))
+      );
+      const eventPayments = paymentResults.flatMap((result) => result.status === 'fulfilled' ? result.value.data : []);
+
+      setEvents(organizerEvents);
+      setBookings(eventBookings);
+      setPayments(eventPayments);
+    } catch (err) {
+      toast.error('Không tải được dashboard', getErrorMessage(err));
+      setEvents([]);
+      setBookings([]);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -94,11 +93,11 @@ export const OrganizerDashboardPage: React.FC = () => {
     setDeleteLoading(true);
     try {
       await eventApi.delete(id);
-      toast.success('Đã xóa sự kiện');
+      toast.success('Đã hủy sự kiện');
       setDeleteTargetId(null);
       fetchOrganizerEvents();
     } catch (err) {
-      toast.error('Không thể xóa sự kiện', getErrorMessage(err));
+      toast.error('Không thể hủy sự kiện', getErrorMessage(err));
     } finally {
       setDeleteLoading(false);
     }
@@ -125,13 +124,8 @@ export const OrganizerDashboardPage: React.FC = () => {
               Organizer Dashboard
             </h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Track your events, bookings and revenue
+              Track your events, bookings and revenue from live backend data
             </p>
-            {isDemoAnalytics && (
-              <p className="mt-2 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                Some analytics are generated from demo data.
-              </p>
-            )}
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -182,7 +176,7 @@ export const OrganizerDashboardPage: React.FC = () => {
               <ChartCard title="Events by Status" subtitle="Organizer event status mix" isEmpty={eventsByStatus.length === 0}>
                 <EventStatusPieChart data={eventsByStatus} />
               </ChartCard>
-              <ChartCard title="Payment Status" subtitle="Demo payment distribution" isEmpty={paymentsByStatus.length === 0}>
+              <ChartCard title="Payment Status" subtitle="Payment distribution" isEmpty={paymentsByStatus.length === 0}>
                 <PaymentStatusPieChart data={paymentsByStatus} />
               </ChartCard>
             </div>
@@ -206,7 +200,7 @@ export const OrganizerDashboardPage: React.FC = () => {
                         type="button"
                         onClick={() => setDeleteTargetId(event.id)}
                         className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
-                        aria-label={`Delete ${event.title}`}
+                        aria-label={`Cancel ${event.title}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -232,9 +226,9 @@ export const OrganizerDashboardPage: React.FC = () => {
 
       <ConfirmDialog
         open={Boolean(deleteTargetId)}
-        title="Delete event?"
-        description="Are you sure you want to delete this event? This action cannot be undone."
-        confirmText="Delete event"
+        title="Cancel event?"
+        description="This will switch the event to cancelled on the backend."
+        confirmText="Cancel event"
         cancelText="Keep event"
         variant="danger"
         isLoading={deleteLoading}

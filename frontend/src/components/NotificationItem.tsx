@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bell, Check, AlertCircle, Info, ThumbsUp } from 'lucide-react';
-import { Notification } from '../api/mockDb';
+import { Notification } from '../types/domain';
 
 interface NotificationItemProps {
   notification: Notification;

@@ -121,7 +121,7 @@ export const LoginPage: React.FC = () => {
           </Button>
         </form>
 
-        {/* Dynamic Mock users help tags */}
+        {/* Account help tags */}
         <div className="bg-indigo-50/50 p-4 border border-indigo-100 rounded-xl space-y-2.5">
           <p className="text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-indigo-500" /> Bảng tài khoản thử nghiệm nhanh

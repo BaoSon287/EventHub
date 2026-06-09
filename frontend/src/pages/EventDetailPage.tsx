@@ -4,7 +4,7 @@ import { Calendar, MapPin, Users, ShieldAlert, ArrowLeft, Sparkles } from 'lucid
 import { eventApi } from '../api/eventApi';
 import { bookingApi } from '../api/bookingApi';
 import { authApi } from '../api/authApi';
-import { Event, User } from '../api/mockDb';
+import { Event, User } from '../types/domain';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
 import { EventImage } from '../components/EventImage';

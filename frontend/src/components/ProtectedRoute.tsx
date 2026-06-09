@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { authApi } from '../api/authApi';
-import { User } from '../api/mockDb';
+import { User } from '../types/domain';
 
 interface ProtectedRouteProps {
   allowedRoles?: User['role'][];

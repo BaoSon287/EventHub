@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Ticket, Calendar, MapPin, Search, ArrowRight, ShieldAlert, Sparkles, QrCode, X } from 'lucide-react';
 import { bookingApi } from '../api/bookingApi';
 import { authApi } from '../api/authApi';
-import { Booking, User } from '../api/mockDb';
+import { Booking, User } from '../types/domain';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { StatusBadge } from '../components/StatusBadge';

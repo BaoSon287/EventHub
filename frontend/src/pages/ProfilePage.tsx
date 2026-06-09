@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Camera, CheckCircle, Image as ImageIcon, Save, Upload } from 'lucide-react';
 import { authApi } from '../api/authApi';
 import { userApi } from '../api/userApi';
-import { User } from '../api/mockDb';
+import { User } from '../types/domain';
 import { Button } from '../components/Button';
 
 const LOCAL_AVATAR_FILES = [
@@ -60,7 +60,7 @@ export const ProfilePage: React.FC = () => {
     }
 
     if (file.size > MAX_AVATAR_BYTES) {
-      setError('Ảnh đại diện nên nhỏ hơn 350KB để lưu ổn định trong môi trường demo.');
+      setError('Ảnh đại diện nên nhỏ hơn 350KB để lưu ổn định trên trình duyệt.');
       return;
     }
 
@@ -206,7 +206,7 @@ export const ProfilePage: React.FC = () => {
                 Upload ảnh từ máy
               </button>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-                Hỗ trợ ảnh JPG, PNG, WEBP. Trong bản demo ảnh được lưu dạng data URL.
+                Hỗ trợ ảnh JPG, PNG, WEBP. Ảnh chọn từ máy sẽ được lưu vào hồ sơ hiện tại.
               </p>
             </div>
           </aside>
