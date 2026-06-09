@@ -57,7 +57,9 @@ const toUiEvent = (event: BackendEvent): Event => {
     time: event.startTime && event.endTime
       ? `${event.startTime.slice(11, 16)} - ${event.endTime.slice(11, 16)}`
       : '',
-    location: [event.location, event.city].filter(Boolean).join(', '),
+    location: event.location || event.address || event.city || '',
+    address: event.address,
+    city: event.city,
     price: Number(event.price || 0),
     capacity: event.totalTickets,
     booked: Math.max(0, event.totalTickets - event.availableTickets),
@@ -72,8 +74,8 @@ const toBackendEventPayload = (eventData: Partial<Event>) => ({
   description: eventData.description,
   category: eventData.category,
   location: eventData.location,
-  address: eventData.location,
-  city: eventData.location,
+  address: eventData.address,
+  city: eventData.city,
   startTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(0, 5) || '09:00'}:00` : undefined,
   endTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(-5) || '17:00'}:00` : undefined,
   totalTickets: eventData.capacity,

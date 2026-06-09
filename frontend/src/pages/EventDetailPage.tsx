@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Users, ShieldAlert, ArrowLeft, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, Navigation, Users, ShieldAlert, ArrowLeft, Sparkles } from 'lucide-react';
 import { eventApi } from '../api/eventApi';
 import { bookingApi } from '../api/bookingApi';
 import { authApi } from '../api/authApi';
@@ -12,6 +12,7 @@ import { DetailSkeleton } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/ToastProvider';
 import { getErrorMessage } from '../utils/getErrorMessage';
 import { formatCurrency } from '../utils/formatters';
+import { buildGoogleMapsDirectionsUrl, buildGoogleMapsSearchUrl } from '../utils/googleMaps';
 
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +65,8 @@ export const EventDetailPage: React.FC = () => {
   const availableTickets = Math.max(0, event.capacity - event.booked);
   const maxQuantity = Math.max(1, Math.min(10, availableTickets));
   const isSoldOut = availableTickets <= 0;
+  const mapsSearchUrl = buildGoogleMapsSearchUrl(event);
+  const mapsDirectionsUrl = buildGoogleMapsDirectionsUrl(event);
 
   const handleBooking = async () => {
     if (!user) {
@@ -165,7 +168,12 @@ export const EventDetailPage: React.FC = () => {
               </div>
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Địa điểm tổ chức</p>
-                <p className="text-sm font-black text-slate-800">{event.location}</p>
+                <p className="text-sm font-black text-slate-800">{event.location || 'Location details are not available.'}</p>
+                {[event.address, event.city].filter(Boolean).length > 0 && (
+                  <p className="text-xs text-slate-500 font-semibold">
+                    {[event.address, event.city].filter(Boolean).join(', ')}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -211,6 +219,49 @@ export const EventDetailPage: React.FC = () => {
 
         {/* Right Column: Ticket Box Booking */}
         <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-xs p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Location</p>
+                {mapsSearchUrl ? (
+                  <div className="mt-1 space-y-1">
+                    {event.location && <p className="text-sm font-black text-slate-800">{event.location}</p>}
+                    {event.address && <p className="text-xs font-semibold text-slate-500">{event.address}</p>}
+                    {event.city && <p className="text-xs font-semibold text-slate-500">{event.city}</p>}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Location details are not available.</p>
+                )}
+              </div>
+            </div>
+
+            {mapsSearchUrl && mapsDirectionsUrl && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <a
+                  href={mapsSearchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-extrabold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                >
+                  <MapPin className="h-4 w-4" />
+                  View on Google Maps
+                </a>
+                <a
+                  href={mapsDirectionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-indigo-700"
+                >
+                  <Navigation className="h-4 w-4" />
+                  Get Directions
+                </a>
+              </div>
+            )}
+          </div>
+
           <div className="sticky top-24 bg-white border border-slate-100 rounded-2xl shadow-md p-6 space-y-6">
             <div>
               <h3 className="text-base font-extrabold text-slate-800 mb-2">Đăng ký đặt vé</h3>

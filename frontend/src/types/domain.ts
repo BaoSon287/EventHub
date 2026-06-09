@@ -19,6 +19,8 @@ export interface Event {
   date: string;
   time: string;
   location: string;
+  address?: string;
+  city?: string;
   price: number;
   capacity: number;
   booked: number;

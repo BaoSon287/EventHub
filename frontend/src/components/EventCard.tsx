@@ -4,6 +4,7 @@ import { Calendar, MapPin, Tag } from 'lucide-react';
 import { Event } from '../types/domain';
 import { StatusBadge } from './StatusBadge';
 import { EventImage } from './EventImage';
+import { buildGoogleMapsSearchUrl } from '../utils/googleMaps';
 
 interface EventCardProps {
   event: Event;
@@ -11,6 +12,8 @@ interface EventCardProps {
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ event, id }) => {
+  const mapsSearchUrl = buildGoogleMapsSearchUrl(event);
+
   const formatPrice = (price: number) => {
     if (price === 0) return 'Miễn phí';
     return `${price.toLocaleString('vi-VN')}đ`;
@@ -71,6 +74,16 @@ export const EventCard: React.FC<EventCardProps> = ({ event, id }) => {
           <div className="flex items-center gap-2">
             <MapPin className="w-3.5 h-3.5 text-slate-400" />
             <span className="truncate">{event.location}</span>
+            {mapsSearchUrl && (
+              <a
+                href={mapsSearchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-700"
+              >
+                Map
+              </a>
+            )}
           </div>
         </div>
 
