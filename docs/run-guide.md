@@ -52,10 +52,7 @@ Open:
 http://localhost:5173
 ```
 
-The frontend can switch between:
-
-- `Local Host (8080)` for the real API Gateway
-- `Mock Offline` for localStorage demo data
+The frontend uses the real API only. Set `VITE_API_BASE_URL` if the API Gateway is not running on `http://localhost:8080`.
 
 ## Smoke Test
 
@@ -122,4 +119,14 @@ Build backend locally:
 ```powershell
 cd D:\EventHub
 mvn clean package -DskipTests
+```
+
+## CI/CD
+
+GitHub Actions runs backend and frontend checks on push or pull request to `main`.
+
+See:
+
+```text
+docs/ci-cd.md
 ```
