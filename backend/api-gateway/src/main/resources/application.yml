@@ -4,6 +4,7 @@ server:
 spring:
   application:
     name: api-gateway
+
   cloud:
     gateway:
       globalcors:
@@ -24,29 +25,35 @@ spring:
               - Authorization
               - Content-Type
               - X-Internal-Api-Key
+
       routes:
         - id: auth-service
-          uri: lb://auth-service
+          uri: ${AUTH_SERVICE_URL}
           predicates:
             - Path=/api/auth/**
+
         - id: user-service
-          uri: lb://user-service
+          uri: ${USER_SERVICE_URL}
           predicates:
             - Path=/api/users/**
+
         - id: event-service
-          uri: lb://event-service
+          uri: ${EVENT_SERVICE_URL}
           predicates:
-            - Path=/api/events/**
+            - Path=/api/events/**,/events/**
+
         - id: booking-service
-          uri: lb://booking-service
+          uri: ${BOOKING_SERVICE_URL}
           predicates:
             - Path=/api/bookings/**
+
         - id: notification-service
-          uri: lb://notification-service
+          uri: ${NOTIFICATION_SERVICE_URL}
           predicates:
             - Path=/api/notifications/**
+
         - id: payment-service
-          uri: lb://payment-service
+          uri: ${PAYMENT_SERVICE_URL}
           predicates:
             - Path=/api/payments/**
 
