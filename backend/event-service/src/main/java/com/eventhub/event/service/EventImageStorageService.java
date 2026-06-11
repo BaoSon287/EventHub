@@ -1,5 +1,7 @@
 package com.eventhub.event.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.event.dto.EventImageUploadResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,19 +32,29 @@ public class EventImageStorageService {
     private final Path uploadDir;
     private final String publicBaseUrl;
     private final String publicPath;
+    private final Cloudinary cloudinary;
+    private final String cloudinaryFolder;
 
     public EventImageStorageService(
             @Value("${eventhub.upload.event-image-dir:uploads/events}") String uploadDir,
             @Value("${eventhub.upload.public-base-url:http://localhost:8080}") String publicBaseUrl,
-            @Value("${eventhub.upload.event-image-public-path:/api/events/uploads/events}") String publicPath
+            @Value("${eventhub.upload.event-image-public-path:/api/events/uploads/events}") String publicPath,
+            @Value("${eventhub.cloudinary.url:}") String cloudinaryUrl,
+            @Value("${eventhub.cloudinary.folder:eventhub/events}") String cloudinaryFolder
     ) {
         this.uploadDir = Paths.get(uploadDir).toAbsolutePath().normalize();
         this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
         this.publicPath = publicPath.startsWith("/") ? publicPath : "/" + publicPath;
+        this.cloudinary = cloudinaryUrl == null || cloudinaryUrl.isBlank() ? null : new Cloudinary(cloudinaryUrl);
+        this.cloudinaryFolder = cloudinaryFolder == null || cloudinaryFolder.isBlank() ? "eventhub/events" : cloudinaryFolder;
     }
 
     public EventImageUploadResponse store(MultipartFile file) {
         validate(file);
+
+        if (cloudinary != null) {
+            return storeInCloudinary(file);
+        }
 
         try {
             Files.createDirectories(uploadDir);
@@ -63,6 +75,25 @@ public class EventImageStorageService {
 
     public Path getUploadDir() {
         return uploadDir;
+    }
+
+    private EventImageUploadResponse storeInCloudinary(MultipartFile file) {
+        try {
+            String publicId = UUID.randomUUID().toString();
+            Map<?, ?> result = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "folder", cloudinaryFolder,
+                    "public_id", publicId,
+                    "resource_type", "image"
+            ));
+            Object secureUrl = result.get("secure_url");
+            Object storedPublicId = result.get("public_id");
+            if (secureUrl == null) {
+                throw new BadRequestException("Could not store event image");
+            }
+            return new EventImageUploadResponse(secureUrl.toString(), storedPublicId == null ? publicId : storedPublicId.toString());
+        } catch (IOException ex) {
+            throw new BadRequestException("Could not store event image");
+        }
     }
 
     private void validate(MultipartFile file) {

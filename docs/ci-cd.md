@@ -57,6 +57,8 @@ SPRING_RABBITMQ_HOST
 SPRING_RABBITMQ_USERNAME
 SPRING_RABBITMQ_PASSWORD
 EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+CLOUDINARY_URL
+CLOUDINARY_FOLDER
 ```
 
 Because the frontend no longer has mock mode, the deployed frontend must point to the deployed API gateway:

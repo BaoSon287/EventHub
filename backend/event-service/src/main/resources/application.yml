@@ -31,3 +31,6 @@ eventhub:
     event-image-dir: ${EVENT_IMAGE_UPLOAD_DIR:uploads/events}
     public-base-url: ${EVENT_IMAGE_PUBLIC_BASE_URL:http://localhost:8080}
     event-image-public-path: ${EVENT_IMAGE_PUBLIC_PATH:/api/events/uploads/events}
+  cloudinary:
+    url: ${CLOUDINARY_URL:}
+    folder: ${CLOUDINARY_FOLDER:eventhub/events}

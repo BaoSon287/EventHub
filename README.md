@@ -210,7 +210,7 @@ Users can upload avatars in the frontend profile page or choose from bundled ava
 
 Event images are stored locally in development under `uploads/events` by Event Service and are served through the API Gateway at `/api/events/uploads/events/{fileName}`. Uploaded image URLs are saved in `event.imageUrl`.
 
-Supported event image formats are JPG, PNG, and WEBP with a 5MB max size. Local file storage is intended for development and CV demos. Production should replace it with object storage such as Cloudinary, Amazon S3, or Google Cloud Storage, scan uploaded files, and serve them through a CDN.
+Supported event image formats are JPG, PNG, and WEBP with a 5MB max size. In production, set `CLOUDINARY_URL` on Event Service to upload event images to Cloudinary instead of Render/local filesystem. Optionally set `CLOUDINARY_FOLDER` to choose the Cloudinary folder, for example `eventhub/events`.
 
 ## Demo Flow
 
