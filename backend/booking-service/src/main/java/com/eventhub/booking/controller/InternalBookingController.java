@@ -21,7 +21,7 @@ public class InternalBookingController {
 
     @GetMapping("/{bookingId}")
     public ApiResponse<InternalBookingResponse> findInternalBooking(
-            @PathVariable Long bookingId,
+            @PathVariable("bookingId") Long bookingId,
             @RequestHeader(name = "X-Internal-Api-Key", required = false) String internalApiKey
     ) {
         internalApiKeyValidator.requireValid(internalApiKey);
@@ -30,7 +30,7 @@ public class InternalBookingController {
 
     @PatchMapping("/{bookingId}/payment-status")
     public ApiResponse<InternalBookingResponse> updatePaymentStatus(
-            @PathVariable Long bookingId,
+            @PathVariable("bookingId") Long bookingId,
             @Valid @RequestBody UpdateBookingPaymentStatusRequest request,
             @RequestHeader(name = "X-Internal-Api-Key", required = false) String internalApiKey
     ) {
