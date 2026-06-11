@@ -29,7 +29,7 @@ public class UserProfileController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<UserProfile> getById(@PathVariable("id") Long id, @AuthenticationPrincipal CustomUserPrincipal principal) {
+    public ApiResponse<UserProfile> getById(@PathVariable Long id, @AuthenticationPrincipal CustomUserPrincipal principal) {
         UserProfile profile = service.getById(id);
         requireOwnerOrAdmin(profile.getAuthUserId(), principal);
         return ApiResponse.success("User profile found", profile);
@@ -37,7 +37,7 @@ public class UserProfileController {
 
     @GetMapping("/auth/{authUserId}")
     public ApiResponse<UserProfile> getByAuthUserId(
-            @PathVariable("authUserId") Long authUserId,
+            @PathVariable Long authUserId,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         requireOwnerOrAdmin(authUserId, principal);
@@ -55,7 +55,7 @@ public class UserProfileController {
 
     @PutMapping("/{id}")
     public ApiResponse<UserProfile> update(
-            @PathVariable("id") Long id,
+            @PathVariable Long id,
             @Valid @RequestBody UpdateUserProfileRequest request,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {

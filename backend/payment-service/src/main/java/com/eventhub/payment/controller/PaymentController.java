@@ -42,7 +42,7 @@ public class PaymentController {
     @Operation(summary = "Get payment details")
     @GetMapping("/{id}")
     public ApiResponse<PaymentResponse> findById(
-            @PathVariable("id") Long id,
+            @PathVariable Long id,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ApiResponse.success("Get payment successfully", service.findById(id, principal));
@@ -51,7 +51,7 @@ public class PaymentController {
     @Operation(summary = "Get payment by code")
     @GetMapping("/code/{paymentCode}")
     public ApiResponse<PaymentResponse> findByPaymentCode(
-            @PathVariable("paymentCode") String paymentCode,
+            @PathVariable String paymentCode,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ApiResponse.success("Get payment successfully", service.findByPaymentCode(paymentCode, principal));
@@ -71,7 +71,7 @@ public class PaymentController {
     @Operation(summary = "Get payments by booking")
     @GetMapping("/booking/{bookingId}")
     public ApiResponse<PaymentPageResponse> findByBookingId(
-            @PathVariable("bookingId") Long bookingId,
+            @PathVariable Long bookingId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
             @AuthenticationPrincipal CustomUserPrincipal principal
@@ -82,7 +82,7 @@ public class PaymentController {
     @Operation(summary = "Mock successful payment")
     @PatchMapping("/{id}/mock-success")
     public ApiResponse<PaymentResponse> mockSuccess(
-            @PathVariable("id") Long id,
+            @PathVariable Long id,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ApiResponse.success("Mock payment success successfully", service.mockSuccess(id, principal));
@@ -91,7 +91,7 @@ public class PaymentController {
     @Operation(summary = "Mock failed payment")
     @PatchMapping("/{id}/mock-fail")
     public ApiResponse<PaymentResponse> mockFail(
-            @PathVariable("id") Long id,
+            @PathVariable Long id,
             @Valid @RequestBody MockPaymentResultRequest request,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
@@ -101,7 +101,7 @@ public class PaymentController {
     @Operation(summary = "Cancel pending payment")
     @PatchMapping("/{id}/cancel")
     public ApiResponse<PaymentResponse> cancel(
-            @PathVariable("id") Long id,
+            @PathVariable Long id,
             @AuthenticationPrincipal CustomUserPrincipal principal
     ) {
         return ApiResponse.success("Cancel payment successfully", service.cancel(id, principal));

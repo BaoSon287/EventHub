@@ -77,7 +77,7 @@ NOTIFICATION_SERVICE_URL=https://<notification-service>.onrender.com
 PAYMENT_SERVICE_URL=https://<payment-service>.onrender.com
 ```
 
-The same six URL values can also be added as GitHub repository variables so `.github/workflows/keep-render-awake.yml` can ping each backend service directly every 5 minutes. Add `API_GATEWAY_URL` there as well so the gateway stays awake too.
+The same six URL values can also be added as GitHub repository variables so `.github/workflows/keep-render-awake.yml` can ping each backend service directly every 10 minutes.
 
 ## Run Locally
 
