@@ -40,5 +40,6 @@ jobs:
 
             url="${base_url%/}${health_path}"
             echo "Pinging $name: $url"
-            curl --location --silent --show-error --max-time 60 --retry 2 --retry-delay 5 "$url" || true
+            curl --location --silent --show-error --max-time 20 --connect-timeout 10 \
+              --output /dev/null --write-out "$name HTTP %{http_code} in %{time_total}s\n" "$url" || true
           done
