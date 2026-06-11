@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "booking-service")
+@FeignClient(name = "booking-service", url = "${BOOKING_SERVICE_URL:http://booking-service:8084}")
 public interface BookingServiceClient {
     @GetMapping("/api/bookings/internal/{bookingId}")
     BookingApiResponse<InternalBookingResponse> getInternalBooking(@PathVariable("bookingId") Long bookingId);

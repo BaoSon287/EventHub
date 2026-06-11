@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "event-service")
+@FeignClient(name = "event-service", url = "${EVENT_SERVICE_URL:http://event-service:8083}")
 public interface EventServiceClient {
     @GetMapping("/api/events/internal/{eventId}")
     EventApiResponse<InternalEventResponse> getInternalEvent(@PathVariable("eventId") Long eventId);

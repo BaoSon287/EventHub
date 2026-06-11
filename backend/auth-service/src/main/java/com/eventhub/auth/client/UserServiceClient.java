@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "user-service")
+@FeignClient(name = "user-service", url = "${USER_SERVICE_URL:http://user-service:8082}")
 public interface UserServiceClient {
     @PostMapping("/api/users")
     ApiResponse<Object> createProfile(@RequestBody CreateUserProfileRequest request);
