@@ -2,12 +2,13 @@ name: Keep Render Services Awake
 
 on:
   schedule:
-    - cron: "3-53/10 * * * *"
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
       USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
