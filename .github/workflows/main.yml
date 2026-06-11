@@ -1,0 +1,17 @@
+name: Keep Render Services Awake
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  schedule-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check schedule trigger
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "UTC time: $(date -u)"
+          echo "Vietnam time: $(TZ=Asia/Ho_Chi_Minh date)"
