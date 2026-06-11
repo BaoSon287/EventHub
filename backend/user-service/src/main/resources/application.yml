@@ -14,6 +14,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 2MB
+      max-request-size: 2MB
 eureka:
   client:
     service-url:
@@ -25,3 +30,6 @@ eventhub:
   jwt:
     secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
   internal-api-key: ${INTERNAL_API_KEY:eventhub-internal-secret-change-me}
+  cloudinary:
+    url: ${CLOUDINARY_URL:}
+    avatar-folder: ${CLOUDINARY_AVATAR_FOLDER:eventhub/avatars}

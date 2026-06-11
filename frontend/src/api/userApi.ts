@@ -12,6 +12,11 @@ type BackendProfile = {
   bio?: string;
 };
 
+type AvatarUploadResponse = {
+  avatarUrl: string;
+  fileName: string;
+};
+
 const applyProfile = (user: User, profile: BackendProfile): User => ({
   ...user,
   name: profile.fullName || user.name,
@@ -31,6 +36,13 @@ export const userApi = {
     } catch {
       return user;
     }
+  },
+
+  uploadAvatar: async (file: File): Promise<AvatarUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosClient.post('/api/users/avatar/upload', formData);
+    return unwrap<AvatarUploadResponse>(response);
   },
 
   updateCurrentProfile: async (user: User): Promise<User> => {

@@ -1,25 +1,34 @@
 package com.eventhub.user.controller;
 
 import com.eventhub.common.dto.ApiResponse;
+import com.eventhub.user.dto.AvatarUploadResponse;
 import com.eventhub.user.dto.CreateUserProfileRequest;
 import com.eventhub.user.dto.UpdateUserProfileRequest;
 import com.eventhub.user.entity.UserProfile;
 import com.eventhub.user.security.CustomUserPrincipal;
 import com.eventhub.user.security.InternalApiKeyValidator;
+import com.eventhub.user.service.AvatarStorageService;
 import com.eventhub.user.service.UserProfileService;
 import jakarta.validation.Valid;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserProfileController {
     private final UserProfileService service;
+    private final AvatarStorageService avatarStorageService;
     private final InternalApiKeyValidator internalApiKeyValidator;
 
-    public UserProfileController(UserProfileService service, InternalApiKeyValidator internalApiKeyValidator) {
+    public UserProfileController(
+            UserProfileService service,
+            AvatarStorageService avatarStorageService,
+            InternalApiKeyValidator internalApiKeyValidator
+    ) {
         this.service = service;
+        this.avatarStorageService = avatarStorageService;
         this.internalApiKeyValidator = internalApiKeyValidator;
     }
 
@@ -62,6 +71,17 @@ public class UserProfileController {
             throw new AccessDeniedException("Authenticated user is required");
         }
         return ApiResponse.success("User profile saved", service.upsertCurrentUser(principal, request));
+    }
+
+    @PostMapping("/avatar/upload")
+    public ApiResponse<AvatarUploadResponse> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new AccessDeniedException("Authenticated user is required");
+        }
+        return ApiResponse.success("Avatar uploaded", avatarStorageService.store(file, principal.userId()));
     }
 
     @PutMapping("/{id}")

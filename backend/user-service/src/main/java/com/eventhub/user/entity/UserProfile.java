@@ -22,7 +22,6 @@ public class UserProfile {
     private String email;
     private String fullName;
     private String phone;
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String avatarUrl;
     @Column(length = 1000)

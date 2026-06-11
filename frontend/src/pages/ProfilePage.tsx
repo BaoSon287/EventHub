@@ -22,7 +22,7 @@ const SYSTEM_AVATARS = [
   ...LOCAL_AVATAR_FILES.map((file) => `/avatars/${encodeURIComponent(file)}`)
 ];
 
-const MAX_AVATAR_BYTES = 350 * 1024;
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -62,7 +62,7 @@ export const ProfilePage: React.FC = () => {
     };
   }, [user?.id, navigate]);
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -75,18 +75,22 @@ export const ProfilePage: React.FC = () => {
     }
 
     if (file.size > MAX_AVATAR_BYTES) {
-      setError('Ảnh đại diện nên nhỏ hơn 350KB để lưu ổn định trên trình duyệt.');
+      setError('Ảnh đại diện nên nhỏ hơn 2MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setAvatar(reader.result);
+    setUpdating(true);
+    try {
+      const result = await userApi.uploadAvatar(file);
+      setAvatar(result.avatarUrl);
+    } catch (err: any) {
+      setError(err.message || 'Không upload được ảnh đại diện.');
+    } finally {
+      setUpdating(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
-    };
-    reader.onerror = () => setError('Không đọc được file ảnh này.');
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleUpdate = async (event: React.FormEvent) => {
