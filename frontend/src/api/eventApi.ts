@@ -30,6 +30,25 @@ type PageResponse<T> = {
   content: T[];
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+const normalizeImageUrl = (imageUrl?: string) => {
+  if (!imageUrl) {
+    return 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=1000';
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      return `${API_BASE_URL.replace(/\/$/, '')}${url.pathname}`;
+    }
+  } catch {
+    return imageUrl;
+  }
+
+  return imageUrl;
+};
+
 const categoryMap: Record<string, Event['category']> = {
   music: 'music',
   tech: 'tech',
@@ -52,7 +71,7 @@ const toUiEvent = (event: BackendEvent): Event => {
     description: event.description,
     content: event.description,
     category: categoryMap[String(event.category || '').toLowerCase()] || 'tech',
-    image: event.imageUrl || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=1000',
+    image: normalizeImageUrl(event.imageUrl),
     date: start.toISOString().slice(0, 10),
     time: event.startTime && event.endTime
       ? `${event.startTime.slice(11, 16)} - ${event.endTime.slice(11, 16)}`
@@ -89,7 +108,8 @@ export const eventApi = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await axiosClient.post('/api/events/images/upload', formData);
-    return unwrap<UploadImageResponse>(response);
+    const result = unwrap<UploadImageResponse>(response);
+    return { ...result, imageUrl: normalizeImageUrl(result.imageUrl) };
   },
 
   getAll: async (params?: { category?: string; search?: string }) => {
