@@ -23,6 +23,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Service
@@ -38,19 +39,7 @@ public class EventService {
     }
 
     public PageResponse<EventResponse> search(EventSearchCriteria criteria, int page, int size, String sortBy, String sortDir) {
-        EventSearchCriteria effectiveCriteria = criteria.status() == null
-                ? new EventSearchCriteria(
-                        criteria.keyword(),
-                        criteria.category(),
-                        criteria.city(),
-                        criteria.minPrice(),
-                        criteria.maxPrice(),
-                        criteria.startDate(),
-                        criteria.endDate(),
-                        EventStatus.PUBLISHED
-                )
-                : criteria;
-        Page<Event> events = repository.findAll(EventSpecification.filter(effectiveCriteria), pageable(page, size, sortBy, sortDir));
+        Page<Event> events = repository.findAll(EventSpecification.publicFilter(criteria, LocalDateTime.now()), pageable(page, size, sortBy, sortDir));
         return toPageResponse(events);
     }
 
@@ -61,14 +50,22 @@ public class EventService {
     public EventResponse create(CreateEventRequest request, CustomUserPrincipal principal) {
         requireOrganizerOrAdmin(principal);
         validateTimeRange(request.startTime(), request.endTime());
+        if (request.status() != null && request.status() != EventStatus.DRAFT) {
+            throw new BadRequestException("Create event only supports DRAFT status; use publish API to publish");
+        }
         Event event = mapper.toEntity(request, principal);
-        validatePublishable(event);
         return mapper.toResponse(repository.save(event));
     }
 
     public EventResponse update(Long id, UpdateEventRequest request, CustomUserPrincipal principal) {
         Event event = getEvent(id);
         requireOwnerOrAdmin(event, principal);
+        if (isCompleted(event)) {
+            throw new BadRequestException("Completed events cannot be updated");
+        }
+        if (request.status() != null && request.status() != event.getStatus()) {
+            throw new BadRequestException("Use publish or cancel API to change event status");
+        }
         validateTimeRange(request.startTime(), request.endTime());
         validateTicketCounts(request.totalTickets(), request.availableTickets());
         mapper.update(event, request);
@@ -79,6 +76,9 @@ public class EventService {
     public void cancel(Long id, CustomUserPrincipal principal) {
         Event event = getEvent(id);
         requireOwnerOrAdmin(event, principal);
+        if (isCompleted(event)) {
+            throw new BadRequestException("Completed events cannot be cancelled");
+        }
         event.setStatus(EventStatus.CANCELLED);
         repository.save(event);
     }
@@ -86,14 +86,23 @@ public class EventService {
     public EventResponse publish(Long id, CustomUserPrincipal principal) {
         Event event = getEvent(id);
         requireOwnerOrAdmin(event, principal);
-        event.setStatus(EventStatus.PUBLISHED);
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new BadRequestException("Cancelled events cannot be published");
+        }
+        if (isCompleted(event)) {
+            throw new BadRequestException("Completed events cannot be published");
+        }
         validatePublishable(event);
+        event.setStatus(EventStatus.PUBLISHED);
         return mapper.toResponse(repository.save(event));
     }
 
     public EventResponse cancelAndReturn(Long id, CustomUserPrincipal principal) {
         Event event = getEvent(id);
         requireOwnerOrAdmin(event, principal);
+        if (isCompleted(event)) {
+            throw new BadRequestException("Completed events cannot be cancelled");
+        }
         event.setStatus(EventStatus.CANCELLED);
         return mapper.toResponse(repository.save(event));
     }
@@ -116,6 +125,16 @@ public class EventService {
     @Transactional
     public InternalEventResponse reserveTickets(Long id, TicketQuantityRequest request) {
         Event event = getEventForUpdate(id);
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new BadRequestException("Cancelled events cannot be booked");
+        }
+        if (isCompleted(event)) {
+            if (event.getStatus() == EventStatus.PUBLISHED) {
+                event.setStatus(EventStatus.COMPLETED);
+                repository.save(event);
+            }
+            throw new BadRequestException("Completed events cannot be booked");
+        }
         if (event.getStatus() != EventStatus.PUBLISHED) {
             throw new BadRequestException("Only published events can be booked");
         }
@@ -181,6 +200,9 @@ public class EventService {
     }
 
     private void validateTicketCounts(Integer totalTickets, Integer availableTickets) {
+        if (totalTickets == null || availableTickets == null) {
+            throw new BadRequestException("Ticket information is required");
+        }
         if (availableTickets > totalTickets) {
             throw new BadRequestException("availableTickets cannot be greater than totalTickets");
         }
@@ -188,12 +210,29 @@ public class EventService {
 
     private void validatePublishable(Event event) {
         validateTicketCounts(event.getTotalTickets(), event.getAvailableTickets());
-        if (event.getStatus() == EventStatus.PUBLISHED
-                && (event.getTitle() == null || event.getTitle().isBlank()
+        if (event.getTitle() == null || event.getTitle().isBlank()
+                || event.getDescription() == null || event.getDescription().isBlank()
+                || event.getCategory() == null || event.getCategory().isBlank()
+                || event.getLocation() == null || event.getLocation().isBlank()
+                || event.getCity() == null || event.getCity().isBlank()
                 || event.getStartTime() == null
                 || event.getEndTime() == null
-                || event.getTotalTickets() == null)) {
-            throw new BadRequestException("Cannot publish event with missing title, time, or ticket information");
+                || event.getTotalTickets() == null
+                || event.getAvailableTickets() == null
+                || event.getPrice() == null
+                || event.getOrganizerId() == null) {
+            throw new BadRequestException("Cannot publish event with missing required information");
         }
+        validateTimeRange(event.getStartTime(), event.getEndTime());
+        if (!event.getEndTime().isAfter(LocalDateTime.now())) {
+            throw new BadRequestException("Cannot publish an event that has already ended");
+        }
+    }
+
+    private boolean isCompleted(Event event) {
+        return event.getStatus() == EventStatus.COMPLETED
+                || (event.getStatus() == EventStatus.PUBLISHED
+                && event.getEndTime() != null
+                && !event.getEndTime().isAfter(LocalDateTime.now()));
     }
 }

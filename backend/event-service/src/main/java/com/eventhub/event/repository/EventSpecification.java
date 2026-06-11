@@ -2,9 +2,11 @@ package com.eventhub.event.repository;
 
 import com.eventhub.event.dto.EventSearchCriteria;
 import com.eventhub.event.entity.Event;
+import com.eventhub.event.entity.EventStatus;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,5 +49,18 @@ public final class EventSpecification {
 
             return builder.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    public static Specification<Event> publicFilter(EventSearchCriteria criteria, LocalDateTime now) {
+        return filter(new EventSearchCriteria(
+                criteria.keyword(),
+                criteria.category(),
+                criteria.city(),
+                criteria.minPrice(),
+                criteria.maxPrice(),
+                criteria.startDate(),
+                criteria.endDate(),
+                EventStatus.PUBLISHED
+        )).and((root, query, builder) -> builder.greaterThan(root.get("endTime"), now));
     }
 }
