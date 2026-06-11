@@ -77,6 +77,8 @@ NOTIFICATION_SERVICE_URL=https://<notification-service>.onrender.com
 PAYMENT_SERVICE_URL=https://<payment-service>.onrender.com
 ```
 
+The same six URL values can also be added as GitHub repository variables so `.github/workflows/keep-render-awake.yml` can ping each backend service directly every 10 minutes.
+
 ## Run Locally
 
 Start PostgreSQL first, then run the services from separate terminals:

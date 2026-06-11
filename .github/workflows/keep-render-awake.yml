@@ -1,0 +1,44 @@
+name: Keep Render Services Awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      AUTH_SERVICE_URL: ${{ vars.AUTH_SERVICE_URL }}
+      USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
+      EVENT_SERVICE_URL: ${{ vars.EVENT_SERVICE_URL }}
+      BOOKING_SERVICE_URL: ${{ vars.BOOKING_SERVICE_URL }}
+      NOTIFICATION_SERVICE_URL: ${{ vars.NOTIFICATION_SERVICE_URL }}
+      PAYMENT_SERVICE_URL: ${{ vars.PAYMENT_SERVICE_URL }}
+    steps:
+      - name: Ping service health endpoints
+        shell: bash
+        run: |
+          set -u
+
+          services=(
+            "Auth|${AUTH_SERVICE_URL:-}|/api/auth/health"
+            "User|${USER_SERVICE_URL:-}|/api/users/health"
+            "Event|${EVENT_SERVICE_URL:-}|/api/events/health"
+            "Booking|${BOOKING_SERVICE_URL:-}|/api/bookings/health"
+            "Notification|${NOTIFICATION_SERVICE_URL:-}|/api/notifications/health"
+            "Payment|${PAYMENT_SERVICE_URL:-}|/api/payments/health"
+          )
+
+          for service in "${services[@]}"; do
+            IFS="|" read -r name base_url health_path <<< "$service"
+
+            if [ -z "$base_url" ]; then
+              echo "Skipping $name: repository variable is not set"
+              continue
+            fi
+
+            url="${base_url%/}${health_path}"
+            echo "Pinging $name: $url"
+            curl --location --silent --show-error --max-time 60 --retry 2 --retry-delay 5 "$url" || true
+          done
