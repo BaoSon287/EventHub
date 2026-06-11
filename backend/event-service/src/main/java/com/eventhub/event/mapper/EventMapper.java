@@ -27,7 +27,7 @@ public class EventMapper {
                 .imageUrl(request.imageUrl())
                 .organizerId(principal.userId())
                 .organizerName(principal.email())
-                .status(EventStatus.DRAFT)
+                .status(request.status() == null ? EventStatus.DRAFT : request.status())
                 .build();
     }
 
@@ -44,6 +44,9 @@ public class EventMapper {
         event.setAvailableTickets(request.availableTickets());
         event.setPrice(request.price());
         event.setImageUrl(request.imageUrl());
+        if (request.status() != null) {
+            event.setStatus(request.status());
+        }
     }
 
     public EventResponse toResponse(Event event) {

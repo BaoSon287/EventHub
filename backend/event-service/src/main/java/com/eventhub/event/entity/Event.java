@@ -38,7 +38,6 @@ public class Event {
     private String organizerName;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
     private EventStatus status;
 
     private LocalDateTime createdAt;
