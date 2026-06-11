@@ -85,14 +85,14 @@ export const LoginPage: React.FC = () => {
         {/* Inputs */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase text-slate-400">Tên đăng nhập</label>
+            <label className="text-[10px] font-black uppercase text-slate-400">Email</label>
             <div className="relative">
               <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                type="text"
+                type="email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Nhập tên đăng nhập... (vd: user)"
+                placeholder="Nhập email... (vd: user@example.com)"
                 className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </div>
@@ -106,7 +106,7 @@ export const LoginPage: React.FC = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu... (vd: user123)"
+                placeholder="Nhập mật khẩu..."
                 className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </div>
@@ -128,19 +128,19 @@ export const LoginPage: React.FC = () => {
           </p>
           <div className="grid grid-cols-3 gap-2">
             <button
-              onClick={() => autofillAs('user', 'user123')}
+              onClick={() => autofillAs('user@example.com', 'Password123')}
               className="px-2.5 py-1.5 bg-white hover:bg-indigo-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 transition"
             >
               Attendee
             </button>
             <button
-              onClick={() => autofillAs('organizer', 'organizer123')}
+              onClick={() => autofillAs('organizer@example.com', 'Password123')}
               className="px-2.5 py-1.5 bg-white hover:bg-indigo-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 transition"
             >
               Organizer
             </button>
             <button
-              onClick={() => autofillAs('admin', 'admin123')}
+              onClick={() => autofillAs('admin@example.com', 'Password123')}
               className="px-2.5 py-1.5 bg-white hover:bg-indigo-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700 transition"
             >
               Admin
