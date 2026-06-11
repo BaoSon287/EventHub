@@ -44,8 +44,23 @@ export const ProfilePage: React.FC = () => {
   React.useEffect(() => {
     if (!user) {
       navigate('/login?message=Vui lòng đăng nhập để xem thông tin cá nhân.');
+      return;
     }
-  }, [user, navigate]);
+
+    let active = true;
+    userApi.syncCurrentProfile(user).then((syncedUser) => {
+      if (!active) return;
+      setUser(syncedUser);
+      setName(syncedUser.name || '');
+      setPhone(syncedUser.phone || '0901234567');
+      setOrganization(syncedUser.organization || 'Tự do');
+      setAvatar(syncedUser.avatar || SYSTEM_AVATARS[0]);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, navigate]);
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

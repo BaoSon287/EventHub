@@ -24,7 +24,10 @@ export const userApi = {
   syncCurrentProfile: async (user: User): Promise<User> => {
     try {
       const response = await axiosClient.get(`/api/users/auth/${user.id}`);
-      return applyProfile(user, unwrap<BackendProfile>(response));
+      const updated = applyProfile(user, unwrap<BackendProfile>(response));
+      localStorage.setItem('eventhub_current_user', JSON.stringify(updated));
+      window.dispatchEvent(new Event('storage'));
+      return updated;
     } catch {
       return user;
     }
