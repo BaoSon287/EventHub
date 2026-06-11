@@ -46,6 +46,12 @@ services:
     container_name: eventhub-api-gateway
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      EVENT_SERVICE_URL: http://event-service:8083
+      BOOKING_SERVICE_URL: http://booking-service:8084
+      NOTIFICATION_SERVICE_URL: http://notification-service:8085
+      PAYMENT_SERVICE_URL: http://payment-service:8086
     ports:
       - "8080:8080"
     depends_on:

@@ -29,7 +29,7 @@ EventHub is a full-stack event management and ticket booking platform inspired b
 
 ## Architecture
 
-Frontend clients call the API Gateway on port `8080`. The gateway routes requests to services discovered through Eureka on port `8761`. Each domain service owns its own PostgreSQL database. Booking, payment, and notification workflows use RabbitMQ for asynchronous events.
+Frontend clients call the API Gateway on port `8080`. The gateway routes requests to service URLs configured through environment variables. Eureka on port `8761` is still used for service registration and visibility. Each domain service owns its own PostgreSQL database. Booking, payment, and notification workflows use RabbitMQ for asynchronous events.
 
 ```text
 Frontend
@@ -59,12 +59,23 @@ Frontend
 
 ## API Gateway Routes
 
-- `/api/auth/**` -> `auth-service`
-- `/api/users/**` -> `user-service`
-- `/api/events/**` -> `event-service`
-- `/api/bookings/**` -> `booking-service`
-- `/api/notifications/**` -> `notification-service`
-- `/api/payments/**` -> `payment-service`
+- `/api/auth/**` -> `AUTH_SERVICE_URL`
+- `/api/users/**` -> `USER_SERVICE_URL`
+- `/api/events/**` and `/events/**` -> `EVENT_SERVICE_URL`
+- `/api/bookings/**` -> `BOOKING_SERVICE_URL`
+- `/api/notifications/**` -> `NOTIFICATION_SERVICE_URL`
+- `/api/payments/**` -> `PAYMENT_SERVICE_URL`
+
+For Render deployments, set these API Gateway environment variables to the public URLs of the backend services:
+
+```bash
+AUTH_SERVICE_URL=https://event-hub-auth-service.onrender.com
+USER_SERVICE_URL=https://<user-service>.onrender.com
+EVENT_SERVICE_URL=https://<event-service>.onrender.com
+BOOKING_SERVICE_URL=https://<booking-service>.onrender.com
+NOTIFICATION_SERVICE_URL=https://<notification-service>.onrender.com
+PAYMENT_SERVICE_URL=https://<payment-service>.onrender.com
+```
 
 ## Run Locally
 
