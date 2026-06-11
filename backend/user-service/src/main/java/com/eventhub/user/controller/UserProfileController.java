@@ -53,6 +53,17 @@ public class UserProfileController {
         return ApiResponse.success("User profile created", service.create(request));
     }
 
+    @PostMapping("/me")
+    public ApiResponse<UserProfile> upsertCurrentUser(
+            @Valid @RequestBody UpdateUserProfileRequest request,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new AccessDeniedException("Authenticated user is required");
+        }
+        return ApiResponse.success("User profile saved", service.upsertCurrentUser(principal, request));
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<UserProfile> update(
             @PathVariable("id") Long id,

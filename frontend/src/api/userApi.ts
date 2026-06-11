@@ -31,15 +31,13 @@ export const userApi = {
   },
 
   updateCurrentProfile: async (user: User): Promise<User> => {
-    const profileResponse = await axiosClient.get(`/api/users/auth/${user.id}`);
-    const profile = unwrap<BackendProfile>(profileResponse);
-    const updateResponse = await axiosClient.put(`/api/users/${profile.id}`, {
+    const response = await axiosClient.post('/api/users/me', {
       fullName: user.name,
       phone: user.phone || '',
       avatarUrl: user.avatar,
       bio: user.organization || ''
     });
-    const updated = applyProfile(user, unwrap<BackendProfile>(updateResponse));
+    const updated = applyProfile(user, unwrap<BackendProfile>(response));
     localStorage.setItem('eventhub_current_user', JSON.stringify(updated));
     window.dispatchEvent(new Event('storage'));
     return updated;

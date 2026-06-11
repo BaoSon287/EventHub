@@ -6,6 +6,7 @@ import com.eventhub.user.dto.CreateUserProfileRequest;
 import com.eventhub.user.dto.UpdateUserProfileRequest;
 import com.eventhub.user.entity.UserProfile;
 import com.eventhub.user.repository.UserProfileRepository;
+import com.eventhub.user.security.CustomUserPrincipal;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -42,6 +43,19 @@ public class UserProfileService {
 
     public UserProfile update(Long id, UpdateUserProfileRequest request) {
         UserProfile profile = getById(id);
+        profile.setFullName(request.fullName());
+        profile.setPhone(request.phone());
+        profile.setAvatarUrl(request.avatarUrl());
+        profile.setBio(request.bio());
+        return repository.save(profile);
+    }
+
+    public UserProfile upsertCurrentUser(CustomUserPrincipal principal, UpdateUserProfileRequest request) {
+        UserProfile profile = repository.findByAuthUserId(principal.userId())
+                .orElseGet(() -> UserProfile.builder()
+                        .authUserId(principal.userId())
+                        .email(principal.email())
+                        .build());
         profile.setFullName(request.fullName());
         profile.setPhone(request.phone());
         profile.setAvatarUrl(request.avatarUrl());
