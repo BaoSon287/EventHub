@@ -134,7 +134,7 @@ RabbitMQ Management UI is available at http://localhost:15672 with username `eve
 
 ## Demo Accounts
 
-Create demo accounts through the frontend Register page or the Auth API:
+Demo accounts are seeded automatically by Auth Service:
 
 - `organizer@example.com` / `Password123` with role `ORGANIZER`
 - `user@example.com` / `Password123` with role `USER`
