@@ -1,90 +1,147 @@
-# EventHub - Microservices Event Management Platform
+# EventHub
 
-EventHub is a full-stack event management and ticket booking platform inspired by Eventbrite, built with Spring Boot microservices, React, PostgreSQL, RabbitMQ, Docker, and JWT authentication.
+EventHub is a full-stack event management and ticket booking platform built with a Spring Boot microservices backend and a React frontend. The project models a practical event marketplace: organizers publish events, users book tickets, payments are simulated through a mock payment service, and notifications are produced asynchronously through RabbitMQ.
+
+The repository is organized as a Maven multi-module backend plus a Vite React frontend. Each backend service owns its own PostgreSQL database and communicates through the API Gateway, OpenFeign internal calls, and RabbitMQ integration events.
+
+## Highlights
+
+- Microservices architecture with Spring Boot 3 and Java 17.
+- API Gateway entry point for frontend and external API traffic.
+- Eureka Discovery Server for service registration and visibility.
+- PostgreSQL database per service.
+- JWT authentication with role-based access for `USER`, `ORGANIZER`, and `ADMIN`.
+- Event discovery, event management, booking, mock payment, notifications, and dashboards.
+- RabbitMQ-based asynchronous notifications for booking and payment events.
+- React 19 frontend with Vite, TypeScript, Tailwind CSS, Recharts, and Axios.
+- Docker Compose setup for local development.
+- Swagger/OpenAPI UI for backend service exploration.
 
 ## Tech Stack
 
-- Java 17
-- Spring Boot 3.x
-- Spring Cloud Gateway
-- Netflix Eureka Discovery Server
-- Spring Security
-- JWT-ready auth structure
-- Spring Data JPA
-- PostgreSQL
-- Maven multi-module build
-- Docker Compose
-- RabbitMQ
-- Swagger/OpenAPI
-- Lombok
-- Validation
-- OpenFeign
-- React
-- Vite
-- Tailwind CSS
-- Axios
-- React Router
-- Recharts
-- Nginx
+| Layer | Technologies |
+| --- | --- |
+| Backend | Java 17, Spring Boot 3.3, Spring Web, Spring Security, Spring Data JPA, Bean Validation |
+| Microservices | Spring Cloud Gateway, Netflix Eureka, OpenFeign |
+| Data | PostgreSQL, Hibernate JPA |
+| Messaging | RabbitMQ |
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS, React Router, Axios, Recharts |
+| Tooling | Maven multi-module build, Docker Compose, Swagger/OpenAPI |
+| Storage | Local upload directory in development, optional Cloudinary configuration |
 
 ## Architecture
 
-Frontend clients call the API Gateway on port `8080`. The gateway routes requests to service URLs configured through environment variables. Eureka on port `8761` is still used for service registration and visibility. Each domain service owns its own PostgreSQL database. Booking, payment, and notification workflows use RabbitMQ for asynchronous events.
+```text
+React Frontend
+    |
+    v
+API Gateway :8080
+    |
+    +--> Auth Service :8081 --------> auth_db
+    +--> User Service :8082 --------> user_db
+    +--> Event Service :8083 -------> event_db
+    +--> Booking Service :8084 -----> booking_db
+    +--> Payment Service :8086 -----> payment_db
+    +--> Notification Service :8085 -> notification_db
+
+Discovery Server :8761
+RabbitMQ :5672 / Management UI :15672
+```
+
+Core communication patterns:
+
+- Frontend calls backend APIs through `api-gateway`.
+- Services register with `discovery-server`.
+- Booking Service calls Event Service to validate events and reserve or release tickets.
+- Payment Service calls Booking Service internal APIs to validate and update payment status.
+- Booking and Payment services publish RabbitMQ events.
+- Notification Service consumes RabbitMQ events and creates user notifications.
+
+## Repository Structure
 
 ```text
-Frontend
-  -> API Gateway
-  -> Auth/User/Event/Booking/Payment/Notification Services
-  -> PostgreSQL per service
-  -> RabbitMQ for async events
-  -> Notification Service consumes events
+backend/
+  api-gateway/
+  auth-service/
+  booking-service/
+  common-lib/
+  discovery-server/
+  event-service/
+  notification-service/
+  payment-service/
+  user-service/
+frontend/
+docker/
+docs/
+scripts/
+uploads/
 ```
 
 ## Services
 
-| Service | Port | Database | Purpose |
+| Service | Port | Database | Responsibility |
 | --- | ---: | --- | --- |
-| discovery-server | 8761 | - | Eureka service registry |
-| api-gateway | 8080 | - | Single API entry point |
-| auth-service | 8081 | auth_db | Register, login, JWT preparation |
-| user-service | 8082 | user_db | User profile management |
-| event-service | 8083 | event_db | Event CRUD |
-| booking-service | 8084 | booking_db | Booking creation and lookup |
-| notification-service | 8085 | notification_db | Notification endpoints, console email logging |
-| payment-service | 8086 | payment_db | Mock payment transaction management |
-| frontend dev | 5173 | - | React/Vite development server |
-| frontend docker | 3000 | - | Nginx-served React build |
-| rabbitmq | 5672 | - | Asynchronous event broker |
-| rabbitmq-management | 15672 | - | RabbitMQ management UI |
+| `discovery-server` | 8761 | - | Eureka service registry |
+| `api-gateway` | 8080 | - | API entry point, routing, CORS |
+| `auth-service` | 8081 | `auth_db` | Registration, login, JWT issuing |
+| `user-service` | 8082 | `user_db` | User profiles and avatars |
+| `event-service` | 8083 | `event_db` | Event CRUD, event images, ticket inventory |
+| `booking-service` | 8084 | `booking_db` | Booking creation, cancellation, lookup |
+| `notification-service` | 8085 | `notification_db` | Notification APIs and mock email logging |
+| `payment-service` | 8086 | `payment_db` | Mock payment transactions |
+| `frontend` | 5173 / 3000 | - | Vite dev server / Docker Nginx build |
 
-## API Gateway Routes
+## Requirements
 
-- `/api/auth/**` -> `AUTH_SERVICE_URL`
-- `/api/users/**` -> `USER_SERVICE_URL`
-- `/api/events/**` and `/events/**` -> `EVENT_SERVICE_URL`
-- `/api/bookings/**` -> `BOOKING_SERVICE_URL`
-- `/api/notifications/**` -> `NOTIFICATION_SERVICE_URL`
-- `/api/payments/**` -> `PAYMENT_SERVICE_URL`
+- Java 17
+- Maven 3.9+
+- Node.js 22+
+- Docker Desktop
 
-For Render deployments, set these API Gateway environment variables to the public URLs of the backend services:
+## Quick Start With Docker Compose
 
-```bash
-AUTH_SERVICE_URL=https://event-hub-auth-service.onrender.com
-USER_SERVICE_URL=https://<user-service>.onrender.com
-EVENT_SERVICE_URL=https://<event-service>.onrender.com
-BOOKING_SERVICE_URL=https://<booking-service>.onrender.com
-NOTIFICATION_SERVICE_URL=https://<notification-service>.onrender.com
-PAYMENT_SERVICE_URL=https://<payment-service>.onrender.com
+From the repository root:
+
+```powershell
+mvn clean package -DskipTests
+docker compose up --build
 ```
 
-The same six URL values can also be added as GitHub repository variables so `.github/workflows/keep-render-awake.yml` can ping each backend service directly every 10 minutes.
+Open:
 
-## Run Locally
+- Frontend: http://localhost:3000
+- API Gateway: http://localhost:8080
+- Eureka: http://localhost:8761
+- RabbitMQ Management: http://localhost:15672
 
-Start PostgreSQL first, then run the services from separate terminals:
+RabbitMQ local credentials:
 
-```bash
+```text
+eventhub / eventhub
+```
+
+PostgreSQL is initialized with these service databases:
+
+```text
+auth_db
+user_db
+event_db
+booking_db
+notification_db
+payment_db
+```
+
+## Local Development
+
+Build all backend modules:
+
+```powershell
 mvn clean package
+```
+
+Run backend services from separate terminals:
+
+```powershell
 mvn -pl backend/discovery-server spring-boot:run
 mvn -pl backend/api-gateway spring-boot:run
 mvn -pl backend/auth-service spring-boot:run
@@ -93,77 +150,91 @@ mvn -pl backend/event-service spring-boot:run
 mvn -pl backend/booking-service spring-boot:run
 mvn -pl backend/notification-service spring-boot:run
 mvn -pl backend/payment-service spring-boot:run
-cd frontend && npm install && npm run dev
 ```
 
-Default local database credentials are `eventhub/eventhub`.
+Run the frontend:
 
-## Run With Docker Compose
-
-Build jars first, then start the stack:
-
-```bash
-mvn clean package -DskipTests
-docker compose up --build
-```
-
-PostgreSQL initializes these databases automatically from `docker/postgres/init.sql`: `auth_db`, `user_db`, `event_db`, `booking_db`, `notification_db`, and `payment_db`.
-
-Frontend is available at http://localhost:3000 when running with Docker Compose.
-
-For frontend-only development:
-
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Frontend dev server is available at http://localhost:5173.
+Frontend dev server:
 
-RabbitMQ Management UI is available at http://localhost:15672 with username `eventhub` and password `eventhub`.
+```text
+http://localhost:5173
+```
 
-## Swagger URLs
+If the API Gateway is not running at `http://localhost:8080`, set:
 
-- Auth: http://localhost:8081/swagger-ui/index.html
-- User: http://localhost:8082/swagger-ui/index.html
-- Event: http://localhost:8083/swagger-ui/index.html
-- Booking: http://localhost:8084/swagger-ui/index.html
-- Notification: http://localhost:8085/swagger-ui/index.html
-- Payment: http://localhost:8086/swagger-ui/index.html
+```powershell
+$env:VITE_API_BASE_URL="http://localhost:8080"
+```
+
+## Environment Variables
+
+Use `.env.example` as the starting point for local and deployment configuration.
+
+Important variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `JWT_SECRET` | JWT signing secret shared by services that validate tokens |
+| `JWT_EXPIRATION_MS` | JWT access token lifetime |
+| `INTERNAL_API_KEY` | Simple shared key for internal service endpoints |
+| `SPRING_DATASOURCE_URL` | Service-specific PostgreSQL connection string |
+| `SPRING_DATASOURCE_USERNAME` | PostgreSQL username |
+| `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password |
+| `AUTH_SERVICE_URL` | API Gateway upstream URL for Auth Service |
+| `USER_SERVICE_URL` | API Gateway upstream URL for User Service |
+| `EVENT_SERVICE_URL` | API Gateway upstream URL for Event Service |
+| `BOOKING_SERVICE_URL` | API Gateway upstream URL for Booking Service |
+| `NOTIFICATION_SERVICE_URL` | API Gateway upstream URL for Notification Service |
+| `PAYMENT_SERVICE_URL` | API Gateway upstream URL for Payment Service |
+| `VITE_API_BASE_URL` | Frontend API Gateway base URL |
+| `CLOUDINARY_URL` | Optional production image upload provider |
+
+Do not use the development secrets from `docker-compose.yml` in production.
 
 ## Demo Accounts
 
-Demo accounts are seeded automatically by Auth Service:
+Auth Service seeds demo users automatically:
 
-- `organizer@example.com` / `Password123` with role `ORGANIZER`
-- `user@example.com` / `Password123` with role `USER`
-- `admin@example.com` / `Password123` with role `ADMIN`
+| Email | Password | Role |
+| --- | --- | --- |
+| `user@example.com` | `Password123` | `USER` |
+| `organizer@example.com` | `Password123` | `ORGANIZER` |
+| `admin@example.com` | `Password123` | `ADMIN` |
 
-The backend seeds 8 published demo events automatically in Event Service without duplicating them on restart.
+Event Service also seeds demo events for local usage.
 
-## Authentication Flow
+## API Overview
 
-1. User registers through the API Gateway.
-2. Auth Service stores the account in `auth_db`.
-3. Auth Service calls User Service to create the matching profile in `user_db`.
-4. User logs in with email and password.
-5. Auth Service returns a JWT access token.
-6. Frontend sends the JWT in the `Authorization` header.
+All API responses follow a common envelope:
 
-Register:
-
-```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "Password123",
-    "fullName": "Nguyen Van A",
-    "phone": "0123456789",
-    "role": "USER"
-  }'
+```json
+{
+  "success": true,
+  "message": "Operation completed",
+  "data": {}
+}
 ```
+
+Main API groups:
+
+| Domain | Endpoints |
+| --- | --- |
+| Auth | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
+| Users | `GET /api/users/{id}`, `PUT /api/users/{id}`, avatar upload |
+| Events | `GET /api/events`, `POST /api/events`, `PUT /api/events/{id}`, publish, cancel |
+| Bookings | `POST /api/bookings`, `GET /api/bookings/me`, cancel, mock pay |
+| Payments | `POST /api/payments`, lookup, mock success, mock fail, cancel |
+| Notifications | list user notifications, get detail, mark as read |
+
+Detailed API notes are available in [docs/api-design.md](docs/api-design.md).
+
+## Common API Examples
 
 Login:
 
@@ -176,134 +247,13 @@ curl -X POST http://localhost:8080/api/auth/login \
   }'
 ```
 
-Current user:
-
-```bash
-curl -X GET http://localhost:8080/api/auth/me \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-## Core Features
-
-- User registration and login
-- JWT authentication
-- Role-based access for `USER`, `ORGANIZER`, and `ADMIN`
-- Event creation and management
-- Event search and filtering
-- Ticket booking and availability updates
-- Mock payment flow
-- RabbitMQ notification events
-- Notification list and mark-as-read
-- Organizer and Admin analytics dashboards with charts for bookings, revenue, event status, and payment status
-- Avatar and event image upload for richer profiles and organizer event pages
-- Dockerized local environment
-
-## Analytics Dashboard
-
-Organizer dashboard shows event performance, ticket availability, bookings, revenue charts, payment status distribution, recent bookings, and top performing events. Admin dashboard shows platform-level metrics such as users, events, bookings, payments, notifications, revenue, and role distribution.
-
-Charts are implemented with Recharts in the React frontend. Some analytics may use safe demo fallback data when backend analytics APIs are unavailable, so the dashboard remains usable during demos without introducing a separate analytics service.
-
-## Image Upload
-
-Users can upload avatars in the frontend profile page or choose from bundled avatar assets. Organizers and admins can upload event images from the Create Event page, preview them, remove/change them, or paste an image URL manually.
-
-Event images are stored locally in development under `uploads/events` by Event Service and are served through the API Gateway at `/api/events/uploads/events/{fileName}`. Uploaded image URLs are saved in `event.imageUrl`.
-
-Supported event image formats are JPG, PNG, and WEBP with a 5MB max size. In production, set `CLOUDINARY_URL` on Event Service to upload event images to Cloudinary instead of Render/local filesystem. Optionally set `CLOUDINARY_FOLDER` to choose the Cloudinary folder, for example `eventhub/events`.
-
-## Demo Flow
-
-1. Organizer registers and logs in.
-2. Organizer creates a published event.
-3. User registers and logs in.
-4. User explores events and books tickets.
-5. User completes mock payment.
-6. Booking status changes to paid.
-7. Payment notification is created through RabbitMQ.
-8. User opens Notifications and marks messages as read.
-
-## Project Documentation
-
-- Smoke test checklist: `docs/testing/smoke-test.md`
-- Security test checklist: `docs/testing/security-test.md`
-- Run guide: `docs/run-guide.md`
-- Smoke test script: `scripts/smoke-test.ps1`
-- Security smoke test script: `scripts/security-smoke-test.ps1`
-- Postman guide: `docs/postman/README.md`
-- Postman collection: `docs/postman/EventHub.postman_collection.json`
-- CV project description: `docs/cv-description.md`
-- CI workflow: `.github/workflows/ci.yml`
-
-## Screenshots
-
-Screenshots can be added under `docs/screenshots` after capturing the local demo flow:
-
-- Event discovery page
-- Event detail and booking page
-- Mock payment page
-- My bookings page
-- Notifications page
-- Organizer dashboard
-
-## Health Endpoints
-
-- http://localhost:8081/api/auth/health
-- http://localhost:8082/api/users/health
-- http://localhost:8083/api/events/health
-- http://localhost:8084/api/bookings/health
-- http://localhost:8085/api/notifications/health
-- http://localhost:8086/api/payments/health
-
-## Asynchronous Communication With RabbitMQ
-
-Booking Service does not call Notification Service directly. After a booking is created or cancelled, Booking Service publishes an integration event to RabbitMQ:
-
-- Exchange: `eventhub.exchange`
-- Routing key: `booking.created`
-- Routing key: `booking.cancelled`
-- Queue: `notification.booking.created.queue`
-- Queue: `notification.booking.cancelled.queue`
-
-Notification Service consumes those messages, stores a notification in `notification_db`, and logs a mock email to the console. This reduces coupling between services: if Notification Service is temporarily down, Booking Service can still complete the booking flow and RabbitMQ can hold queued messages.
-
-Payment Service also publishes payment events through RabbitMQ:
-
-- Routing key: `payment.succeeded`
-- Routing key: `payment.failed`
-- Queue: `notification.payment.succeeded.queue`
-- Queue: `notification.payment.failed.queue`
-
-Notification Service consumes these events and creates payment success or failure notifications.
-
-## Event Service
-
-Public users can list and view published events. `ORGANIZER` users can create and manage their own events. `ADMIN` users can manage all events.
-
-Endpoints:
-
-- `GET /api/events`
-- `GET /api/events/{id}`
-- `POST /api/events`
-- `PUT /api/events/{id}`
-- `DELETE /api/events/{id}`
-- `GET /api/events/organizer/{organizerId}`
-- `PATCH /api/events/{id}/publish`
-- `PATCH /api/events/{id}/cancel`
-
 List events:
 
 ```bash
-curl -X GET "http://localhost:8080/api/events?page=0&size=10"
+curl "http://localhost:8080/api/events?page=0&size=10&sortBy=startTime&sortDir=asc"
 ```
 
-Search events:
-
-```bash
-curl -X GET "http://localhost:8080/api/events?keyword=tech&city=Ha%20Noi&sortBy=startTime&sortDir=asc"
-```
-
-Create event:
+Create event as organizer or admin:
 
 ```bash
 curl -X POST http://localhost:8080/api/events \
@@ -325,47 +275,7 @@ curl -X POST http://localhost:8080/api/events \
   }'
 ```
 
-Publish event:
-
-```bash
-curl -X PATCH http://localhost:8080/api/events/1/publish \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Cancel event:
-
-```bash
-curl -X PATCH http://localhost:8080/api/events/1/cancel \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-## Booking Service
-
-Authenticated users can create bookings, list their own bookings, cancel bookings, and mark mock payment as paid. `ADMIN` users can view any user booking. `ORGANIZER` users can view bookings for events they own.
-
-Endpoints:
-
-- `GET /api/bookings/health`
-- `POST /api/bookings`
-- `GET /api/bookings/{id}`
-- `GET /api/bookings/me`
-- `GET /api/bookings/user/{userId}`
-- `GET /api/bookings/event/{eventId}`
-- `PATCH /api/bookings/{id}/cancel`
-- `PATCH /api/bookings/{id}/pay/mock`
-
-Booking flow:
-
-1. User sends a booking request with `eventId` and `quantity`.
-2. Booking Service reads `userId`, `email`, and `role` from JWT.
-3. Booking Service calls Event Service to load internal event data.
-4. Event Service checks published status and available tickets.
-5. Booking Service calls Event Service to reserve tickets.
-6. Event Service decreases `availableTickets` inside a transaction with a pessimistic database lock.
-7. Booking Service creates the booking and returns a `bookingCode`.
-8. When booking is cancelled, Booking Service calls Event Service to release tickets.
-
-Create booking:
+Book tickets:
 
 ```bash
 curl -X POST http://localhost:8080/api/bookings \
@@ -377,110 +287,7 @@ curl -X POST http://localhost:8080/api/bookings \
   }'
 ```
 
-View my bookings:
-
-```bash
-curl -X GET "http://localhost:8080/api/bookings/me?page=0&size=10" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Cancel booking:
-
-```bash
-curl -X PATCH http://localhost:8080/api/bookings/1/cancel \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Mock payment:
-
-```bash
-curl -X PATCH http://localhost:8080/api/bookings/1/pay/mock \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Check event ticket count:
-
-```bash
-curl -X GET http://localhost:8080/api/events/1
-```
-
-## Notification Service
-
-Notification Service consumes booking events from RabbitMQ and stores user notifications. Email delivery is currently mocked by logging to the console.
-
-Endpoints:
-
-- `GET /api/notifications/health`
-- `GET /api/notifications/user/{userId}`
-- `GET /api/notifications/{id}`
-- `PATCH /api/notifications/{id}/read`
-- `POST /api/notifications/email`
-
-Health:
-
-```bash
-curl -X GET http://localhost:8080/api/notifications/health
-```
-
-Send mock email:
-
-```bash
-curl -X POST http://localhost:8080/api/notifications/email \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "user@example.com",
-    "subject": "Test EventHub Notification",
-    "content": "Hello from EventHub"
-  }'
-```
-
-View notifications:
-
-```bash
-curl -X GET "http://localhost:8080/api/notifications/user/1?page=0&size=10" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Mark as read:
-
-```bash
-curl -X PATCH http://localhost:8080/api/notifications/1/read \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-## Payment Flow
-
-Payment Service manages mock payment transactions separately from Booking Service.
-
-1. User creates a booking.
-2. Booking starts with `paymentStatus = UNPAID`.
-3. User creates a payment transaction for that booking.
-4. Payment Service stores a `PENDING` transaction in `payment_db`.
-5. User calls mock success or mock fail.
-6. Payment Service updates the transaction to `SUCCESS` or `FAILED`.
-7. Payment Service calls Booking Service internal API to update booking `paymentStatus`.
-8. Payment Service publishes `payment.succeeded` or `payment.failed` through RabbitMQ.
-9. Notification Service consumes the event and creates a notification.
-
-Endpoints:
-
-- `GET /api/payments/health`
-- `POST /api/payments`
-- `GET /api/payments/{id}`
-- `GET /api/payments/code/{paymentCode}`
-- `GET /api/payments/me`
-- `GET /api/payments/booking/{bookingId}`
-- `PATCH /api/payments/{id}/mock-success`
-- `PATCH /api/payments/{id}/mock-fail`
-- `PATCH /api/payments/{id}/cancel`
-
-Health:
-
-```bash
-curl -X GET http://localhost:8080/api/payments/health
-```
-
-Create payment:
+Create a mock payment:
 
 ```bash
 curl -X POST http://localhost:8080/api/payments \
@@ -492,78 +299,162 @@ curl -X POST http://localhost:8080/api/payments \
   }'
 ```
 
-View my payments:
-
-```bash
-curl -X GET "http://localhost:8080/api/payments/me?page=0&size=10" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Mock payment success:
+Mark payment as successful:
 
 ```bash
 curl -X PATCH http://localhost:8080/api/payments/1/mock-success \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-Mock payment fail:
+## Swagger URLs
 
-```bash
-curl -X PATCH http://localhost:8080/api/payments/1/mock-fail \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "failureReason": "Insufficient balance"
-  }'
+- Auth Service: http://localhost:8081/swagger-ui/index.html
+- User Service: http://localhost:8082/swagger-ui/index.html
+- Event Service: http://localhost:8083/swagger-ui/index.html
+- Booking Service: http://localhost:8084/swagger-ui/index.html
+- Notification Service: http://localhost:8085/swagger-ui/index.html
+- Payment Service: http://localhost:8086/swagger-ui/index.html
+
+## Health Checks
+
+- http://localhost:8081/api/auth/health
+- http://localhost:8082/api/users/health
+- http://localhost:8083/api/events/health
+- http://localhost:8084/api/bookings/health
+- http://localhost:8085/api/notifications/health
+- http://localhost:8086/api/payments/health
+
+Smoke test script:
+
+```powershell
+.\scripts\smoke-test.ps1
 ```
 
-## Simple Saga Pattern
+Security smoke test script:
 
-Payment Service coordinates the mock payment workflow while Booking Service and Payment Service keep separate databases. Payment Service calls Booking Service through an internal API and publishes payment events to RabbitMQ. This is a simple Saga-style workflow for local development, not a complete distributed transaction implementation.
+```powershell
+.\scripts\security-smoke-test.ps1
+```
 
-## Security Design
+## Testing And Build
 
-- JWT authentication is issued by Auth Service and includes `userId`, `email`, and `role` claims.
-- Backend services parse JWT claims for role-based access control across `USER`, `ORGANIZER`, and `ADMIN`.
-- API Gateway forwards the `Authorization` header and restricts CORS to `http://localhost:5173` and `http://localhost:3000` for local development.
-- Internal service endpoints such as `/api/events/internal/**`, `/api/bookings/internal/**`, and user profile creation require `X-Internal-Api-Key`.
-- Passwords are hashed with BCrypt and are never returned in API responses.
-- Register requires a password with at least 8 characters, at least one letter, and at least one number.
-- Request DTOs use Bean Validation and global exception handling avoids returning stack traces to clients.
-- API Gateway adds basic security headers: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, and `Referrer-Policy`.
-- Swagger is enabled for local development. Production should disable or protect Swagger endpoints.
-- Dev secrets are shown in Docker Compose for local use only. Production must use environment variables or a secret manager.
+Backend:
+
+```powershell
+mvn test
+mvn package -DskipTests
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npm ci
+npm run lint
+npm run build
+```
+
+## Core Workflows
+
+Authentication:
+
+1. User registers through Auth Service.
+2. Auth Service creates the account in `auth_db`.
+3. Auth Service calls User Service to create the profile in `user_db`.
+4. Login returns a JWT containing `userId`, `email`, and `role`.
+5. Frontend sends the JWT in the `Authorization` header.
+
+Booking:
+
+1. User selects an event and ticket quantity.
+2. Booking Service loads event data from Event Service.
+3. Event Service validates event status and ticket availability.
+4. Event Service reserves tickets using a database transaction and pessimistic lock.
+5. Booking Service creates a booking record.
+6. Booking Service publishes a `booking.created` event to RabbitMQ.
+
+Payment:
+
+1. User creates a payment transaction for a booking.
+2. Payment Service stores a `PENDING` transaction.
+3. User calls mock success or mock failure.
+4. Payment Service updates the transaction and Booking Service payment status.
+5. Payment Service publishes a payment event to RabbitMQ.
+6. Notification Service creates a user notification.
+
+## RabbitMQ Integration Events
+
+Exchange:
+
+```text
+eventhub.exchange
+```
+
+Routing keys:
+
+```text
+booking.created
+booking.cancelled
+payment.succeeded
+payment.failed
+```
+
+Notification Service consumes these events and stores notifications in `notification_db`. Email delivery is currently mocked by logging message content to the console.
+
+## Security Notes
+
+- Passwords are hashed with BCrypt.
+- JWT is used for authentication across protected APIs.
+- Roles are enforced at service level for user, organizer, and admin workflows.
+- Internal endpoints use `X-Internal-Api-Key`.
+- DTO validation is implemented with Bean Validation.
+- Global exception handling standardizes error responses.
+- Swagger is enabled for local development and should be protected or disabled in production.
+- Development secrets are present only for local Docker usage and must be replaced in deployed environments.
 
 Known security limitations:
 
-- JWT is stored in localStorage for demo simplicity.
-- Refresh token flow is not implemented yet.
-- Internal API key is simple service-to-service protection, not full mTLS or OAuth2 client credentials.
-- Rate limiting is not Redis-backed yet and should be added before production use.
-- Swagger should be disabled or protected in production.
+- Refresh tokens are not implemented.
+- JWT is stored in browser localStorage for demo simplicity.
+- Internal API key protection is not a replacement for production-grade service identity such as mTLS or OAuth2 client credentials.
+- Rate limiting is not Redis-backed.
+
+## Image Uploads
+
+- User avatars are managed by User Service.
+- Event images are managed by Event Service.
+- Local uploads are stored under `uploads/`.
+- Event images are exposed through the API Gateway path configured by `EVENT_IMAGE_PUBLIC_PATH`.
+- Set `CLOUDINARY_URL` and related folder variables to use Cloudinary instead of local storage in production-like deployments.
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [API Design](docs/api-design.md)
+- [Database Design](docs/database-design.md)
+- [Run Guide](docs/run-guide.md)
+- [Postman Guide](docs/postman/README.md)
+- [Smoke Testing](docs/testing/smoke-test.md)
+- [Security Testing](docs/testing/security-test.md)
+- [CI/CD Notes](docs/ci-cd.md)
+- [CV Project Description](docs/cv-description.md)
+
+Postman collection:
+
+```text
+docs/postman/EventHub.postman_collection.json
+```
 
 ## Known Limitations
 
-- Event organizer display name currently uses the JWT email claim as `organizerName`; a later phase can resolve profile names from User Service.
-- Payment is mock-only; there is no real payment gateway yet.
-- Local file storage is used for uploaded event images in development; production should use object storage/CDN delivery.
-- Payment Service does not integrate VNPay, Stripe, or any real provider yet.
-- Booking cancellation refunds are represented by `PaymentStatus.REFUNDED` only.
-- Event Service internal ticket endpoints are public inside the dev stack; production needs service-to-service authentication.
-- Booking Service internal payment endpoints are public inside the dev stack; production needs service-to-service authentication.
-- Booking and payment workflows do not have a production-grade distributed transaction or Saga implementation yet.
-- The payment workflow has no Outbox Pattern or full compensation mechanism yet.
-- Email delivery is mock/log-only and does not send real email yet.
+- Payment is mock-only and does not integrate a real payment provider.
+- Email delivery is mock/log-only.
 - RabbitMQ retry and dead-letter queues are not configured yet.
-- Integration event DTOs are duplicated between Booking Service and Notification Service; they can move to `common-lib` later.
-- `POST /api/notifications/email` is public for local development.
+- The payment workflow is a simple Saga-style flow, not a complete distributed transaction implementation.
+- Some frontend analytics screens can use fallback demo data when analytics endpoints are unavailable.
+- Integration event DTOs are duplicated across services and can be moved into `common-lib` later.
+- Production deployments should harden internal service authentication, rate limiting, observability, and secret management.
 
-## Roadmap
+## License
 
-- Implement production JWT signing and gateway authentication filter.
-- Add refresh tokens and role-based authorization.
-- Add event search, filtering, categories, and organizer workflows.
-- Add real payment service and Saga-based booking consistency.
-- Add notification providers for email and SMS.
-- Add frontend application and Figma-guided UI.
-- Add integration tests and CI/CD pipeline.
+This repository currently does not define a license file.
