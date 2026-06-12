@@ -63,11 +63,23 @@ public class EventController {
 
     @Operation(summary = "Get event details")
     @GetMapping("/{id}")
-    public ApiResponse<EventResponse> findById(@PathVariable("id") Long id) {
-        return ApiResponse.success("Get event successfully", service.findById(id));
+    public ApiResponse<EventResponse> findById(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ApiResponse.success("Get event successfully", service.findById(id, principal));
     }
 
-    @Operation(summary = "Create event as ORGANIZER or ADMIN")
+    @Operation(
+            summary = "Create event as ORGANIZER or ADMIN",
+            description = "Create accepts omitted status or DRAFT for drafts. PUBLISHED is accepted for backward compatibility and runs publish validation. CANCELLED and COMPLETED are not valid create statuses."
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Event created"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation failed or invalid create status"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Only ORGANIZER or ADMIN can create events")
+    })
     @PostMapping
     public ApiResponse<EventResponse> create(
             @Valid @RequestBody CreateEventRequest request,
@@ -98,11 +110,11 @@ public class EventController {
         return ApiResponse.success("Update event successfully", service.update(id, request, principal));
     }
 
-    @Operation(summary = "Soft delete event by switching it to CANCELLED")
+    @Operation(summary = "Delete draft event")
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable("id") Long id, @AuthenticationPrincipal CustomUserPrincipal principal) {
-        service.cancel(id, principal);
-        return ApiResponse.success("Cancel event successfully", null);
+        service.delete(id, principal);
+        return ApiResponse.success("Delete event successfully", null);
     }
 
     @Operation(summary = "List events owned by organizer")
@@ -117,13 +129,28 @@ public class EventController {
         return ApiResponse.success("Get organizer events successfully", service.findByOrganizer(organizerId, status, page, size, principal));
     }
 
-    @Operation(summary = "Publish draft event")
+    @Operation(summary = "Publish draft event", description = "Only the owning organizer or ADMIN can publish a DRAFT event after publish validation passes.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Event published"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Event is not publishable"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Not event owner or admin"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Event not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Invalid status transition")
+    })
     @PatchMapping("/{id}/publish")
     public ApiResponse<EventResponse> publish(@PathVariable("id") Long id, @AuthenticationPrincipal CustomUserPrincipal principal) {
         return ApiResponse.success("Publish event successfully", service.publish(id, principal));
     }
 
-    @Operation(summary = "Cancel event")
+    @Operation(summary = "Cancel event", description = "Only the owning organizer or ADMIN can cancel a DRAFT or PUBLISHED event. Re-cancelling an already cancelled event returns the current event.")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Event cancelled or already cancelled"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Not event owner or admin"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Event not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Invalid status transition")
+    })
     @PatchMapping("/{id}/cancel")
     public ApiResponse<EventResponse> cancel(@PathVariable("id") Long id, @AuthenticationPrincipal CustomUserPrincipal principal) {
         return ApiResponse.success("Cancel event successfully", service.cancelAndReturn(id, principal));

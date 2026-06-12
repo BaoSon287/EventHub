@@ -24,7 +24,8 @@ public class EventDataSeeder {
                     event("Java Spring Boot Bootcamp", "Intensive backend bootcamp covering Spring Boot, JPA, Security, and microservices.", "Technology", "TechHub Da Nang", "35 Thai Phien", "Da Nang", "2026-10-03T09:00:00", "2026-10-05T17:00:00", 80, 799000, "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&q=80&w=1200"),
                     event("Design Thinking Seminar", "Seminar on design thinking, product discovery, and user research.", "Design", "RMIT Vietnam", "702 Nguyen Van Linh", "Ho Chi Minh City", "2026-10-18T13:30:00", "2026-10-18T17:00:00", 150, 150000, "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1200"),
                     event("Charity Run 2026", "Community running event raising funds for education and health programs.", "Sports", "Sala Urban Area", "Mai Chi Tho", "Ho Chi Minh City", "2026-11-08T05:30:00", "2026-11-08T10:00:00", 1500, 250000, "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=1200"),
-                    event("Career Fair for Developers", "Career fair connecting software engineers with technology companies.", "Career", "FPT Tower", "10 Pham Van Bach", "Ha Noi", "2026-11-21T09:00:00", "2026-11-21T16:30:00", 600, 0, "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=1200")
+                    event("Career Fair for Developers", "Career fair connecting software engineers with technology companies.", "Career", "FPT Tower", "10 Pham Van Bach", "Ha Noi", "2026-11-21T09:00:00", "2026-11-21T16:30:00", 600, 0, "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&q=80&w=1200"),
+                    draftEvent("Draft Product Launch", "Draft event for organizer lifecycle demos.", "Business", "EventHub Studio", "1 Demo Street", "Ha Noi", "2026-12-12T09:00:00", "2026-12-12T12:00:00", 100, 120000, "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&q=80&w=1200")
             );
 
             for (Event event : events) {
@@ -48,6 +49,8 @@ public class EventDataSeeder {
             int price,
             String imageUrl
     ) {
+        LocalDateTime parsedStartTime = LocalDateTime.parse(startTime);
+        LocalDateTime parsedEndTime = LocalDateTime.parse(endTime);
         return Event.builder()
                 .title(title)
                 .description(description)
@@ -55,15 +58,56 @@ public class EventDataSeeder {
                 .location(location)
                 .address(address)
                 .city(city)
-                .startTime(LocalDateTime.parse(startTime))
-                .endTime(LocalDateTime.parse(endTime))
+                .startTime(parsedStartTime)
+                .endTime(parsedEndTime)
                 .totalTickets(totalTickets)
                 .availableTickets(totalTickets)
                 .price(BigDecimal.valueOf(price))
                 .imageUrl(imageUrl)
                 .organizerId(1L)
                 .organizerName("EventHub Demo Organizer")
-                .status(EventStatus.PUBLISHED)
+                .status(statusForSeed(parsedEndTime, EventStatus.PUBLISHED))
                 .build();
+    }
+
+    private Event draftEvent(
+            String title,
+            String description,
+            String category,
+            String location,
+            String address,
+            String city,
+            String startTime,
+            String endTime,
+            int totalTickets,
+            int price,
+            String imageUrl
+    ) {
+        LocalDateTime parsedStartTime = LocalDateTime.parse(startTime);
+        LocalDateTime parsedEndTime = LocalDateTime.parse(endTime);
+        return Event.builder()
+                .title(title)
+                .description(description)
+                .category(category)
+                .location(location)
+                .address(address)
+                .city(city)
+                .startTime(parsedStartTime)
+                .endTime(parsedEndTime)
+                .totalTickets(totalTickets)
+                .availableTickets(totalTickets)
+                .price(BigDecimal.valueOf(price))
+                .imageUrl(imageUrl)
+                .organizerId(1L)
+                .organizerName("EventHub Demo Organizer")
+                .status(EventStatus.DRAFT)
+                .build();
+    }
+
+    static EventStatus statusForSeed(LocalDateTime endTime, EventStatus requestedStatus) {
+        if (requestedStatus == EventStatus.PUBLISHED && !endTime.isAfter(LocalDateTime.now())) {
+            return EventStatus.COMPLETED;
+        }
+        return requestedStatus;
     }
 }

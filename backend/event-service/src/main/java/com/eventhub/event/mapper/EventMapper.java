@@ -32,20 +32,38 @@ public class EventMapper {
     }
 
     public void update(Event event, UpdateEventRequest request) {
-        event.setTitle(request.title());
-        event.setDescription(request.description());
-        event.setCategory(request.category());
-        event.setLocation(request.location());
-        event.setAddress(request.address());
-        event.setCity(request.city());
-        event.setStartTime(request.startTime());
-        event.setEndTime(request.endTime());
-        event.setTotalTickets(request.totalTickets());
-        event.setAvailableTickets(request.availableTickets());
-        event.setPrice(request.price());
-        event.setImageUrl(request.imageUrl());
-        if (request.status() != null) {
-            event.setStatus(request.status());
+        if (request.title() != null) {
+            event.setTitle(request.title());
+        }
+        if (request.description() != null) {
+            event.setDescription(request.description());
+        }
+        if (request.category() != null) {
+            event.setCategory(request.category());
+        }
+        if (request.location() != null) {
+            event.setLocation(request.location());
+        }
+        if (request.address() != null) {
+            event.setAddress(request.address());
+        }
+        if (request.city() != null) {
+            event.setCity(request.city());
+        }
+        if (request.startTime() != null) {
+            event.setStartTime(request.startTime());
+        }
+        if (request.endTime() != null) {
+            event.setEndTime(request.endTime());
+        }
+        if (request.totalTickets() != null) {
+            event.setTotalTickets(request.totalTickets());
+        }
+        if (request.price() != null) {
+            event.setPrice(request.price());
+        }
+        if (request.imageUrl() != null) {
+            event.setImageUrl(request.imageUrl());
         }
     }
 
@@ -76,6 +94,9 @@ public class EventMapper {
         return new InternalEventResponse(
                 event.getId(),
                 event.getTitle(),
+                event.getStartTime(),
+                event.getEndTime(),
+                event.getTotalTickets(),
                 event.getPrice(),
                 event.getAvailableTickets(),
                 event.getStatus(),

@@ -60,7 +60,7 @@ public class SampleDataConfig {
                 .imageUrl("https://example.com/event.jpg")
                 .organizerId(1L)
                 .organizerName("Sample Organizer")
-                .status(EventStatus.PUBLISHED)
+                .status(EventDataSeeder.statusForSeed(start.plusHours(8), EventStatus.PUBLISHED))
                 .build();
     }
 }
