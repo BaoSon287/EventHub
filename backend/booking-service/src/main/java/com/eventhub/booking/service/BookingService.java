@@ -17,8 +17,11 @@ import com.eventhub.booking.messaging.BookingEventPublisher;
 import com.eventhub.booking.repository.BookingRepository;
 import com.eventhub.booking.security.CustomUserPrincipal;
 import com.eventhub.common.exception.BadRequestException;
+import com.eventhub.common.exception.ForbiddenException;
 import com.eventhub.common.exception.ResourceNotFoundException;
 import feign.FeignException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +34,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+
     private final BookingRepository repository;
     private final EventServiceClient eventServiceClient;
     private final BookingMapper mapper;
@@ -50,20 +55,27 @@ public class BookingService {
 
     @Transactional
     public BookingResponse create(CreateBookingRequest request, CustomUserPrincipal principal) {
+        validateQuantity(request.quantity());
         InternalEventResponse event = fetchEvent(request.eventId());
         validateBookable(event, request.quantity());
         reserveTickets(request.eventId(), request.quantity());
 
-        Booking booking = repository.save(Booking.builder()
-                .userId(principal.userId())
-                .eventId(request.eventId())
-                .eventTitle(event.title())
-                .quantity(request.quantity())
-                .ticketPrice(event.price())
-                .totalPrice(event.price().multiply(BigDecimal.valueOf(request.quantity())))
-                .status(BookingStatus.CONFIRMED)
-                .paymentStatus(PaymentStatus.UNPAID)
-                .build());
+        Booking booking;
+        try {
+            booking = repository.saveAndFlush(Booking.builder()
+                    .userId(principal.userId())
+                    .eventId(request.eventId())
+                    .eventTitle(event.title())
+                    .quantity(request.quantity())
+                    .ticketPrice(event.price())
+                    .totalPrice(event.price().multiply(BigDecimal.valueOf(request.quantity())))
+                    .status(BookingStatus.CONFIRMED)
+                    .paymentStatus(PaymentStatus.UNPAID)
+                    .build());
+        } catch (RuntimeException ex) {
+            compensateReleaseAfterCreateFailure(request.eventId(), request.quantity(), ex);
+            throw ex;
+        }
         eventPublisher.publishBookingCreated(booking, principal);
         return mapper.toResponse(booking);
     }
@@ -187,13 +199,13 @@ public class BookingService {
         try {
             EventApiResponse<InternalEventResponse> response = eventServiceClient.getInternalEvent(eventId);
             if (response == null || response.data() == null) {
-                throw new ResourceNotFoundException("Event not found");
+                throw new ResourceNotFoundException("EVENT_NOT_FOUND: Event not found");
             }
             return response.data();
         } catch (FeignException.NotFound ex) {
-            throw new ResourceNotFoundException("Event not found");
+            throw new ResourceNotFoundException("EVENT_NOT_FOUND: Event not found");
         } catch (FeignException ex) {
-            throw toBadRequest(ex);
+            throw mapEventServiceException(ex);
         }
     }
 
@@ -201,7 +213,7 @@ public class BookingService {
         try {
             eventServiceClient.reserveTickets(eventId, new TicketQuantityRequest(quantity));
         } catch (FeignException ex) {
-            throw toBadRequest(ex);
+            throw mapEventServiceException(ex);
         }
     }
 
@@ -209,16 +221,38 @@ public class BookingService {
         try {
             eventServiceClient.releaseTickets(eventId, new TicketQuantityRequest(quantity));
         } catch (FeignException ex) {
-            throw toBadRequest(ex);
+            throw mapEventServiceException(ex);
         }
     }
 
     private void validateBookable(InternalEventResponse event, int quantity) {
+        validateQuantity(quantity);
+        if ("CANCELLED".equals(event.status())) {
+            throw new BadRequestException("EVENT_CANCELLED: Cancelled events cannot be booked");
+        }
+        if ("COMPLETED".equals(event.status())) {
+            throw new BadRequestException("EVENT_COMPLETED: Completed events cannot be booked");
+        }
         if (!"PUBLISHED".equals(event.status())) {
-            throw new BadRequestException("Only published events can be booked");
+            throw new BadRequestException("EVENT_NOT_BOOKABLE: Only published events can be booked");
+        }
+        if (event.endTime() != null && !event.endTime().isAfter(LocalDateTime.now())) {
+            throw new BadRequestException("EVENT_COMPLETED: Completed events cannot be booked");
+        }
+        if (event.startTime() != null && !event.startTime().isAfter(LocalDateTime.now())) {
+            throw new BadRequestException("EVENT_ALREADY_STARTED: Event has already started");
+        }
+        if (event.availableTickets() == null) {
+            throw new BadRequestException("EVENT_NOT_BOOKABLE: Event ticket inventory is invalid");
         }
         if (event.availableTickets() < quantity) {
-            throw new BadRequestException("Not enough tickets available");
+            throw new BadRequestException("INSUFFICIENT_TICKETS: Not enough tickets available");
+        }
+    }
+
+    private void validateQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new BadRequestException("INVALID_TICKET_QUANTITY: quantity must be greater than 0");
         }
     }
 
@@ -243,7 +277,25 @@ public class BookingService {
         );
     }
 
-    private BadRequestException toBadRequest(FeignException ex) {
+    private RuntimeException mapEventServiceException(FeignException ex) {
+        if (ex instanceof FeignException.NotFound || ex.status() == 404) {
+            return new ResourceNotFoundException("EVENT_NOT_FOUND: Event not found");
+        }
+        String message = normalizedEventServiceMessage(ex);
+        String code = extractKnownEventErrorCode(message);
+        if ("INVALID_INTERNAL_API_KEY".equals(code)) {
+            return new ForbiddenException("INVALID_INTERNAL_API_KEY: Invalid internal API key");
+        }
+        if (code != null) {
+            return new BadRequestException(code + ": " + eventErrorDescription(code));
+        }
+        if (ex.status() == 503 || ex.status() == 502 || ex.status() == 504 || ex.status() < 0) {
+            return new BadRequestException("EVENT_SERVICE_UNAVAILABLE: Event Service is unavailable");
+        }
+        return new BadRequestException("EVENT_SERVICE_UNAVAILABLE: Event Service request failed");
+    }
+
+    private String normalizedEventServiceMessage(FeignException ex) {
         String message = ex.contentUTF8();
         if (message == null || message.isBlank()) {
             message = ex.getMessage();
@@ -251,6 +303,46 @@ public class BookingService {
         if (message == null || message.isBlank()) {
             message = "Event service request failed with status " + ex.status();
         }
-        return new BadRequestException(message);
+        return message;
+    }
+
+    private String extractKnownEventErrorCode(String message) {
+        String[] knownCodes = {
+                "EVENT_NOT_BOOKABLE",
+                "EVENT_NOT_PUBLISHED",
+                "EVENT_ALREADY_STARTED",
+                "EVENT_COMPLETED",
+                "EVENT_CANCELLED",
+                "INVALID_TICKET_QUANTITY",
+                "INSUFFICIENT_TICKETS",
+                "INVALID_INTERNAL_API_KEY"
+        };
+        for (String code : knownCodes) {
+            if (message.contains(code)) {
+                return code;
+            }
+        }
+        return null;
+    }
+
+    private String eventErrorDescription(String code) {
+        return switch (code) {
+            case "EVENT_NOT_PUBLISHED", "EVENT_NOT_BOOKABLE" -> "Event is not bookable";
+            case "EVENT_ALREADY_STARTED" -> "Event has already started";
+            case "EVENT_COMPLETED" -> "Event has already ended";
+            case "EVENT_CANCELLED" -> "Event has been cancelled";
+            case "INVALID_TICKET_QUANTITY" -> "Ticket quantity is invalid";
+            case "INSUFFICIENT_TICKETS" -> "Not enough tickets available";
+            default -> "Event Service rejected the request";
+        };
+    }
+
+    private void compensateReleaseAfterCreateFailure(Long eventId, int quantity, RuntimeException originalException) {
+        try {
+            releaseTickets(eventId, quantity);
+        } catch (RuntimeException releaseException) {
+            originalException.addSuppressed(releaseException);
+            log.warn("Failed to release reserved tickets after booking create failure, eventId={}", eventId, releaseException);
+        }
     }
 }
