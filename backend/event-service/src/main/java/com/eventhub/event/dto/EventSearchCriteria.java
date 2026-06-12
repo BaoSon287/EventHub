@@ -13,6 +13,19 @@ public record EventSearchCriteria(
         BigDecimal maxPrice,
         LocalDateTime startDate,
         LocalDateTime endDate,
-        EventStatus status
+        EventStatus status,
+        LocalDateTime endsAfter
 ) {
+    public EventSearchCriteria(
+            String keyword,
+            String category,
+            String city,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            EventStatus status
+    ) {
+        this(keyword, category, city, minPrice, maxPrice, startDate, endDate, status, null);
+    }
 }

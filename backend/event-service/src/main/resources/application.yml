@@ -38,3 +38,7 @@ eventhub:
   cloudinary:
     url: ${CLOUDINARY_URL:}
     folder: ${CLOUDINARY_FOLDER:eventhub/events}
+
+event:
+  lifecycle:
+    completion-cron: ${EVENT_LIFECYCLE_COMPLETION_CRON:0 */10 * * * *}

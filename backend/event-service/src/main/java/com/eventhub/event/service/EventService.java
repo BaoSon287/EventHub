@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -34,31 +35,27 @@ public class EventService {
 
     private final EventRepository repository;
     private final EventMapper mapper;
+    private final Clock clock;
 
-    public EventService(EventRepository repository, EventMapper mapper) {
+    public EventService(EventRepository repository, EventMapper mapper, Clock clock) {
         this.repository = repository;
         this.mapper = mapper;
+        this.clock = clock;
     }
 
+    @Transactional
     public PageResponse<EventResponse> search(EventSearchCriteria criteria, int page, int size, String sortBy, String sortDir) {
-        EventSearchCriteria effectiveCriteria = criteria.status() == null
-                ? new EventSearchCriteria(
-                        criteria.keyword(),
-                        criteria.category(),
-                        criteria.city(),
-                        criteria.minPrice(),
-                        criteria.maxPrice(),
-                        criteria.startDate(),
-                        criteria.endDate(),
-                        EventStatus.PUBLISHED
-                )
-                : criteria;
+        completeExpiredPublishedEvents();
+        EventSearchCriteria effectiveCriteria = publicCriteria(criteria);
         Page<Event> events = repository.findAll(EventSpecification.filter(effectiveCriteria), pageable(page, size, sortBy, sortDir));
         return toPageResponse(events);
     }
 
+    @Transactional
     public EventResponse findById(Long id, CustomUserPrincipal principal) {
+        completeExpiredPublishedEvents();
         Event event = getEvent(id);
+        completeIfExpired(event);
         requireViewPermission(event, principal);
         return mapper.toResponse(event);
     }
@@ -138,6 +135,7 @@ public class EventService {
     }
 
     public PageResponse<EventResponse> findByOrganizer(Long organizerId, EventStatus status, int page, int size, CustomUserPrincipal principal) {
+        completeExpiredPublishedEvents();
         if (!principal.isAdmin() && !principal.userId().equals(organizerId)) {
             throw new AccessDeniedException("Organizer can only view own events");
         }
@@ -149,28 +147,39 @@ public class EventService {
     }
 
     public InternalEventResponse findInternalById(Long id) {
+        completeExpiredPublishedEvents();
         return mapper.toInternalResponse(getEvent(id));
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BadRequestException.class)
     public InternalEventResponse reserveTickets(Long id, TicketQuantityRequest request) {
         Event event = getEventForUpdate(id);
-        if (event.getStatus() != EventStatus.PUBLISHED) {
-            throw new BadRequestException("Only published events can be booked");
-        }
+        validateTicketQuantity(request);
+        completeIfExpired(event);
+        validateBookable(event);
         if (event.getAvailableTickets() < request.quantity()) {
-            throw new BadRequestException("Not enough tickets available");
+            throw new BadRequestException("INSUFFICIENT_TICKETS: Not enough tickets available");
         }
-        event.setAvailableTickets(event.getAvailableTickets() - request.quantity());
+        int remainingTickets = event.getAvailableTickets() - request.quantity();
+        if (remainingTickets < 0) {
+            throw new BadRequestException("INSUFFICIENT_TICKETS: Not enough tickets available");
+        }
+        event.setAvailableTickets(remainingTickets);
         return mapper.toInternalResponse(repository.save(event));
+    }
+
+    @Transactional
+    public int completeExpiredPublishedEvents() {
+        return repository.markExpiredPublishedEventsAsCompleted(now());
     }
 
     @Transactional
     public InternalEventResponse releaseTickets(Long id, TicketQuantityRequest request) {
         Event event = getEventForUpdate(id);
+        validateTicketQuantity(request);
         int restoredTickets = event.getAvailableTickets() + request.quantity();
         if (restoredTickets > event.getTotalTickets()) {
-            throw new BadRequestException("availableTickets cannot be greater than totalTickets");
+            throw new BadRequestException("INVALID_TICKET_QUANTITY: availableTickets cannot be greater than totalTickets");
         }
         event.setAvailableTickets(restoredTickets);
         return mapper.toInternalResponse(repository.save(event));
@@ -181,7 +190,7 @@ public class EventService {
     }
 
     private Event getEventForUpdate(Long id) {
-        return repository.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException("Event not found"));
+        return repository.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException("EVENT_NOT_FOUND: Event not found"));
     }
 
     private void requireViewPermission(Event event, CustomUserPrincipal principal) {
@@ -226,6 +235,20 @@ public class EventService {
         );
     }
 
+    private EventSearchCriteria publicCriteria(EventSearchCriteria criteria) {
+        return new EventSearchCriteria(
+                criteria.keyword(),
+                criteria.category(),
+                criteria.city(),
+                criteria.minPrice(),
+                criteria.maxPrice(),
+                criteria.startDate(),
+                criteria.endDate(),
+                EventStatus.PUBLISHED,
+                now()
+        );
+    }
+
     private void requireOrganizerOrAdmin(CustomUserPrincipal principal) {
         if (principal == null) {
             throw new org.springframework.security.authentication.AuthenticationCredentialsNotFoundException("Unauthorized");
@@ -259,6 +282,36 @@ public class EventService {
         }
         if (availableTickets > totalTickets) {
             throw new BadRequestException("availableTickets cannot be greater than totalTickets");
+        }
+    }
+
+    private void validateTicketQuantity(TicketQuantityRequest request) {
+        if (request == null || request.quantity() == null || request.quantity() <= 0) {
+            throw new BadRequestException("INVALID_TICKET_QUANTITY: quantity must be greater than 0");
+        }
+    }
+
+    private void validateBookable(Event event) {
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new BadRequestException("EVENT_CANCELLED: Cancelled events cannot be booked");
+        }
+        if (event.getStatus() == EventStatus.COMPLETED) {
+            throw new BadRequestException("EVENT_COMPLETED: Completed events cannot be booked");
+        }
+        if (event.getStatus() != EventStatus.PUBLISHED) {
+            throw new BadRequestException("EVENT_NOT_PUBLISHED: Only published events can be booked");
+        }
+        if (event.getStartTime() == null || event.getEndTime() == null || !event.getStartTime().isBefore(event.getEndTime())) {
+            throw new BadRequestException("EVENT_NOT_BOOKABLE: Event time range is invalid");
+        }
+        if (!event.getStartTime().isAfter(now())) {
+            throw new BadRequestException("EVENT_ALREADY_STARTED: Event has already started");
+        }
+        if (!event.getEndTime().isAfter(now())) {
+            throw new BadRequestException("EVENT_COMPLETED: Completed events cannot be booked");
+        }
+        if (event.getAvailableTickets() == null || event.getTotalTickets() == null) {
+            throw new BadRequestException("EVENT_NOT_BOOKABLE: Event ticket inventory is invalid");
         }
     }
 
@@ -308,7 +361,7 @@ public class EventService {
         if (!event.getStartTime().isBefore(event.getEndTime())) {
             throw new BadRequestException("EVENT_NOT_PUBLISHABLE: startTime must be before endTime");
         }
-        if (!event.getStartTime().isAfter(LocalDateTime.now())) {
+        if (!event.getStartTime().isAfter(now())) {
             throw new BadRequestException("EVENT_NOT_PUBLISHABLE: startTime must be in the future");
         }
         if (event.getTotalTickets() <= 0) {
@@ -324,6 +377,19 @@ public class EventService {
 
     private void validateDraftBasics(CreateEventRequest request) {
         validateTimeRange(request.startTime(), request.endTime());
+    }
+
+    private void completeIfExpired(Event event) {
+        if (event.getStatus() == EventStatus.PUBLISHED
+                && event.getEndTime() != null
+                && !event.getEndTime().isAfter(now())) {
+            event.setStatus(EventStatus.COMPLETED);
+            repository.save(event);
+        }
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 
     private void requireTransition(Event event, EventStatus targetStatus) {

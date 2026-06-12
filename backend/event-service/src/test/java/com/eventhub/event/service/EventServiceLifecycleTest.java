@@ -4,6 +4,7 @@ import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.common.exception.ResourceNotFoundException;
 import com.eventhub.event.dto.CreateEventRequest;
 import com.eventhub.event.dto.EventResponse;
+import com.eventhub.event.dto.TicketQuantityRequest;
 import com.eventhub.event.dto.UpdateEventRequest;
 import com.eventhub.event.entity.Event;
 import com.eventhub.event.entity.EventStatus;
@@ -12,14 +13,15 @@ import com.eventhub.event.mapper.EventMapper;
 import com.eventhub.event.repository.EventRepository;
 import com.eventhub.event.security.CustomUserPrincipal;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -37,12 +39,16 @@ class EventServiceLifecycleTest {
     @Spy
     private EventMapper mapper;
 
-    @InjectMocks
     private EventService service;
 
     private final CustomUserPrincipal organizer = new CustomUserPrincipal(10L, "organizer@example.com", "ORGANIZER");
     private final CustomUserPrincipal otherOrganizer = new CustomUserPrincipal(20L, "other@example.com", "ORGANIZER");
     private final CustomUserPrincipal admin = new CustomUserPrincipal(1L, "admin@example.com", "ADMIN");
+
+    @BeforeEach
+    void setUp() {
+        service = new EventService(repository, mapper, Clock.systemDefaultZone());
+    }
 
     @Test
     void createWithoutStatusCreatesDraft() {
@@ -363,6 +369,125 @@ class EventServiceLifecycleTest {
         EventResponse response = service.findById(1L, admin);
 
         assertThat(response.status()).isEqualTo(EventStatus.DRAFT);
+    }
+
+    @Test
+    void reserveExpiredPublishedEventCompletesAndFails() {
+        Event event = event(EventStatus.PUBLISHED);
+        event.setStartTime(LocalDateTime.now().minusDays(2));
+        event.setEndTime(LocalDateTime.now().minusDays(1));
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event));
+        when(repository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("EVENT_COMPLETED");
+
+        assertThat(event.getStatus()).isEqualTo(EventStatus.COMPLETED);
+    }
+
+    @Test
+    void reservePublishedEventSucceeds() {
+        Event event = event(EventStatus.PUBLISHED);
+        event.setAvailableTickets(2);
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event));
+        when(repository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reserveTickets(1L, new TicketQuantityRequest(1));
+
+        assertThat(event.getAvailableTickets()).isEqualTo(1);
+    }
+
+    @Test
+    void reserveDraftFails() {
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event(EventStatus.DRAFT)));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("EVENT_NOT_PUBLISHED");
+    }
+
+    @Test
+    void reserveCancelledFails() {
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event(EventStatus.CANCELLED)));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("EVENT_CANCELLED");
+    }
+
+    @Test
+    void reserveCompletedFails() {
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event(EventStatus.COMPLETED)));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("EVENT_COMPLETED");
+    }
+
+    @Test
+    void reserveAlreadyStartedFails() {
+        Event event = event(EventStatus.PUBLISHED);
+        event.setStartTime(LocalDateTime.now().minusMinutes(1));
+        event.setEndTime(LocalDateTime.now().plusHours(2));
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("EVENT_ALREADY_STARTED");
+    }
+
+    @Test
+    void reserveZeroQuantityFails() {
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event(EventStatus.PUBLISHED)));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(0)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("INVALID_TICKET_QUANTITY");
+    }
+
+    @Test
+    void reserveNegativeQuantityFails() {
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event(EventStatus.PUBLISHED)));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(-1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("INVALID_TICKET_QUANTITY");
+    }
+
+    @Test
+    void reserveInsufficientTicketsFails() {
+        Event event = event(EventStatus.PUBLISHED);
+        event.setAvailableTickets(0);
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event));
+
+        assertThatThrownBy(() -> service.reserveTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("INSUFFICIENT_TICKETS");
+    }
+
+    @Test
+    void releaseTicketsSucceeds() {
+        Event event = event(EventStatus.PUBLISHED);
+        event.setAvailableTickets(1);
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event));
+        when(repository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.releaseTickets(1L, new TicketQuantityRequest(1));
+
+        assertThat(event.getAvailableTickets()).isEqualTo(2);
+    }
+
+    @Test
+    void releaseTicketsCannotExceedTotalTickets() {
+        Event event = event(EventStatus.PUBLISHED);
+        event.setAvailableTickets(100);
+        event.setTotalTickets(100);
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(event));
+
+        assertThatThrownBy(() -> service.releaseTickets(1L, new TicketQuantityRequest(1)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("INVALID_TICKET_QUANTITY");
     }
 
     private CreateEventRequest createRequest(EventStatus status) {

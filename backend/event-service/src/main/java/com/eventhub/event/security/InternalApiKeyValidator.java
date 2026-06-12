@@ -14,7 +14,7 @@ public class InternalApiKeyValidator {
 
     public void requireValid(String providedKey) {
         if (providedKey == null || !providedKey.equals(internalApiKey)) {
-            throw new ForbiddenException("Invalid internal API key");
+            throw new ForbiddenException("INVALID_INTERNAL_API_KEY: Invalid internal API key");
         }
     }
 }

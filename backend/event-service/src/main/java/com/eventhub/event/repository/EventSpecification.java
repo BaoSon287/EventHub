@@ -44,6 +44,9 @@ public final class EventSpecification {
             if (criteria.status() != null) {
                 predicates.add(builder.equal(root.get("status"), criteria.status()));
             }
+            if (criteria.endsAfter() != null) {
+                predicates.add(builder.greaterThan(root.get("endTime"), criteria.endsAfter()));
+            }
 
             return builder.and(predicates.toArray(Predicate[]::new));
         };

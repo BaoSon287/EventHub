@@ -89,12 +89,24 @@ class InternalEventControllerTest {
 
     @Test
     void internalEndpointWithoutApiKeyIsRejected() throws Exception {
-        doThrow(new ForbiddenException("Invalid internal API key"))
+        doThrow(new ForbiddenException("INVALID_INTERNAL_API_KEY: Invalid internal API key"))
                 .when(internalApiKeyValidator).requireValid(null);
 
         mockMvc.perform(get("/api/events/internal/1"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success", is(false)))
-                .andExpect(jsonPath("$.message", is("Invalid internal API key")));
+                .andExpect(jsonPath("$.message", is("INVALID_INTERNAL_API_KEY: Invalid internal API key")));
+    }
+
+    @Test
+    void internalEndpointWithWrongApiKeyIsRejected() throws Exception {
+        doThrow(new ForbiddenException("INVALID_INTERNAL_API_KEY: Invalid internal API key"))
+                .when(internalApiKeyValidator).requireValid("wrong-key");
+
+        mockMvc.perform(get("/api/events/internal/1")
+                        .header("X-Internal-Api-Key", "wrong-key"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.message", is("INVALID_INTERNAL_API_KEY: Invalid internal API key")));
     }
 }
