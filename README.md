@@ -207,7 +207,26 @@ Auth Service seeds demo users automatically:
 | `organizer@example.com` | `Password123` | `ORGANIZER` |
 | `admin@example.com` | `Password123` | `ADMIN` |
 
-Event Service also seeds demo events for local usage.
+Event Service also seeds demo events for local usage, including published upcoming events, completed past events, and an organizer draft.
+
+## Event Lifecycle
+
+Events use a single `status` field stored as a string:
+
+```text
+DRAFT -> PUBLISHED -> COMPLETED
+       \-> CANCELLED
+```
+
+- New events default to `DRAFT` when `status` is omitted.
+- `POST /api/events` still accepts `status: "PUBLISHED"` for compatibility, but publish validation is applied.
+- Clients cannot create events directly as `CANCELLED` or `COMPLETED`.
+- Public `GET /api/events` returns only `PUBLISHED` events whose `endTime` is still in the future.
+- `PATCH /api/events/{id}/publish` publishes a valid draft.
+- `PATCH /api/events/{id}/cancel` cancels an event without deleting it.
+- `DELETE /api/events/{id}` physically deletes only eligible `DRAFT` events.
+- Expired published events are synchronized to `COMPLETED` by the Event Service scheduler.
+- Booking succeeds only for `PUBLISHED` events that have not started or ended and still have available tickets.
 
 ## API Overview
 
@@ -227,7 +246,7 @@ Main API groups:
 | --- | --- |
 | Auth | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
 | Users | `GET /api/users/{id}`, `PUT /api/users/{id}`, avatar upload |
-| Events | `GET /api/events`, `POST /api/events`, `PUT /api/events/{id}`, publish, cancel |
+| Events | `GET /api/events`, `POST /api/events`, `PUT /api/events/{id}`, `PATCH /api/events/{id}/publish`, `PATCH /api/events/{id}/cancel`, `DELETE /api/events/{id}` for drafts |
 | Bookings | `POST /api/bookings`, `GET /api/bookings/me`, cancel, mock pay |
 | Payments | `POST /api/payments`, lookup, mock success, mock fail, cancel |
 | Notifications | list user notifications, get detail, mark as read |
@@ -247,13 +266,13 @@ curl -X POST http://localhost:8080/api/auth/login \
   }'
 ```
 
-List events:
+List public upcoming events:
 
 ```bash
 curl "http://localhost:8080/api/events?page=0&size=10&sortBy=startTime&sortDir=asc"
 ```
 
-Create event as organizer or admin:
+Create a draft event as organizer or admin:
 
 ```bash
 curl -X POST http://localhost:8080/api/events \
@@ -271,8 +290,22 @@ curl -X POST http://localhost:8080/api/events \
     "totalTickets": 200,
     "price": 199000,
     "imageUrl": "https://example.com/event.jpg",
-    "status": "PUBLISHED"
+    "status": "DRAFT"
   }'
+```
+
+Publish event:
+
+```bash
+curl -X PATCH http://localhost:8080/api/events/1/publish \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Cancel event:
+
+```bash
+curl -X PATCH http://localhost:8080/api/events/1/cancel \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 Book tickets:
@@ -367,11 +400,11 @@ Authentication:
 Booking:
 
 1. User selects an event and ticket quantity.
-2. Booking Service loads event data from Event Service.
-3. Event Service validates event status and ticket availability.
+2. Booking Service loads event data from Event Service internal APIs using `X-Internal-Api-Key`.
+3. Event Service validates that the event is `PUBLISHED`, has not started or ended, is not cancelled/completed, and has enough tickets.
 4. Event Service reserves tickets using a database transaction and pessimistic lock.
-5. Booking Service creates a booking record.
-6. Booking Service publishes a `booking.created` event to RabbitMQ.
+5. Booking Service creates a booking record only after reservation succeeds.
+6. Booking Service publishes a `booking.created` event to RabbitMQ after the booking is saved.
 
 Payment:
 

@@ -34,7 +34,7 @@ export const EventListPage: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    eventApi.getAll({
+    eventApi.getPublicEvents({
       category: categoryFilter,
       search: searchQuery
     })

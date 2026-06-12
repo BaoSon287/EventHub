@@ -1,6 +1,6 @@
 import axiosClient from './axiosClient';
 import { unwrap } from './apiUtils';
-import { Event } from '../types/domain';
+import { Event, EventStatus } from '../types/domain';
 
 type BackendEvent = {
   id: number;
@@ -63,6 +63,13 @@ const categoryMap: Record<string, Event['category']> = {
   sports: 'sport'
 };
 
+const eventStatuses: EventStatus[] = ['DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED'];
+
+const toEventStatus = (status?: string): EventStatus => {
+  const normalized = String(status || 'DRAFT').toUpperCase();
+  return eventStatuses.includes(normalized as EventStatus) ? normalized as EventStatus : 'DRAFT';
+};
+
 const toUiEvent = (event: BackendEvent): Event => {
   const start = event.startTime ? new Date(event.startTime) : new Date();
   return {
@@ -73,6 +80,8 @@ const toUiEvent = (event: BackendEvent): Event => {
     category: categoryMap[String(event.category || '').toLowerCase()] || 'tech',
     image: normalizeImageUrl(event.imageUrl),
     date: start.toISOString().slice(0, 10),
+    startTime: event.startTime,
+    endTime: event.endTime,
     time: event.startTime && event.endTime
       ? `${event.startTime.slice(11, 16)} - ${event.endTime.slice(11, 16)}`
       : '',
@@ -84,24 +93,36 @@ const toUiEvent = (event: BackendEvent): Event => {
     booked: Math.max(0, event.totalTickets - event.availableTickets),
     organizerId: String(event.organizerId),
     organizerName: event.organizerName,
-    status: event.status === 'CANCELLED' ? 'cancelled' : event.status === 'COMPLETED' ? 'completed' : 'upcoming'
+    status: toEventStatus(event.status)
   };
 };
 
-const toBackendEventPayload = (eventData: Partial<Event>) => ({
-  title: eventData.title,
-  description: eventData.description,
-  category: eventData.category,
-  location: eventData.location,
-  address: eventData.address,
-  city: eventData.city,
-  startTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(0, 5) || '09:00'}:00` : undefined,
-  endTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(-5) || '17:00'}:00` : undefined,
-  totalTickets: eventData.capacity,
-  price: eventData.price,
-  imageUrl: eventData.image,
-  status: eventData.status === 'cancelled' ? 'CANCELLED' : eventData.status === 'completed' ? 'COMPLETED' : 'PUBLISHED'
-});
+const toBackendEventPayload = (eventData: Partial<Event>, includeStatus = false) => {
+  const payload: Record<string, unknown> = {
+    title: eventData.title,
+    description: eventData.description,
+    category: eventData.category,
+    location: eventData.location,
+    address: eventData.address,
+    city: eventData.city,
+    startTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(0, 5) || '09:00'}:00` : undefined,
+    endTime: eventData.date ? `${eventData.date}T${eventData.time?.slice(-5) || '17:00'}:00` : undefined,
+    totalTickets: eventData.capacity,
+    price: eventData.price,
+    imageUrl: eventData.image,
+  };
+
+  if (includeStatus) {
+    payload.status = eventData.status;
+  }
+
+  return payload;
+};
+
+const isPublicUpcoming = (event: Event) => (
+  event.status === 'PUBLISHED'
+  && (!event.endTime || new Date(event.endTime).getTime() > Date.now())
+);
 
 export const eventApi = {
   uploadEventImage: async (file: File): Promise<UploadImageResponse> => {
@@ -112,35 +133,56 @@ export const eventApi = {
     return { ...result, imageUrl: normalizeImageUrl(result.imageUrl) };
   },
 
-  getAll: async (params?: { category?: string; search?: string }) => {
+  getPublicEvents: async (params?: { category?: string; search?: string }) => {
     const response = await axiosClient.get('/api/events', {
       params: {
         keyword: params?.search,
         category: params?.category && params.category !== 'all' ? params.category : undefined
       }
     });
-    return { data: unwrap<PageResponse<BackendEvent>>(response).content.map(toUiEvent) };
+    const events = unwrap<PageResponse<BackendEvent>>(response).content.map(toUiEvent);
+    return { data: events.filter(isPublicUpcoming) };
   },
 
-  getById: async (id: string) => {
+  getAll: async (params?: { category?: string; search?: string }) => eventApi.getPublicEvents(params),
+
+  getEventDetail: async (id: string) => {
     const response = await axiosClient.get(`/api/events/${id}`);
     return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 
-  getByOrganizer: async (organizerId: string) => {
+  getById: async (id: string) => eventApi.getEventDetail(id),
+
+  getOrganizerEvents: async (organizerId: string, status?: EventStatus) => {
     const response = await axiosClient.get(`/api/events/organizer/${organizerId}`, {
-      params: { size: 100 }
+      params: { size: 100, status }
     });
     return { data: unwrap<PageResponse<BackendEvent>>(response).content.map(toUiEvent) };
   },
 
-  create: async (eventData: Omit<Event, 'id' | 'booked' | 'organizerId' | 'organizerName'>) => {
-    const response = await axiosClient.post('/api/events', toBackendEventPayload(eventData));
+  getByOrganizer: async (organizerId: string, status?: EventStatus) => eventApi.getOrganizerEvents(organizerId, status),
+
+  createEvent: async (eventData: Omit<Event, 'id' | 'booked' | 'organizerId' | 'organizerName'>) => {
+    const response = await axiosClient.post('/api/events', toBackendEventPayload(eventData, true));
     return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 
-  update: async (id: string, eventData: Partial<Event>) => {
+  create: async (eventData: Omit<Event, 'id' | 'booked' | 'organizerId' | 'organizerName'>) => eventApi.createEvent(eventData),
+
+  updateEvent: async (id: string, eventData: Partial<Event>) => {
     const response = await axiosClient.put(`/api/events/${id}`, toBackendEventPayload(eventData));
+    return { data: toUiEvent(unwrap<BackendEvent>(response)) };
+  },
+
+  update: async (id: string, eventData: Partial<Event>) => eventApi.updateEvent(id, eventData),
+
+  publishEvent: async (id: string) => {
+    const response = await axiosClient.patch(`/api/events/${id}/publish`);
+    return { data: toUiEvent(unwrap<BackendEvent>(response)) };
+  },
+
+  cancelEvent: async (id: string) => {
+    const response = await axiosClient.patch(`/api/events/${id}/cancel`);
     return { data: toUiEvent(unwrap<BackendEvent>(response)) };
   },
 

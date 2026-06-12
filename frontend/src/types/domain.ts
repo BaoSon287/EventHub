@@ -9,6 +9,12 @@ export interface User {
   organization?: string;
 }
 
+export type EventStatus =
+  | 'DRAFT'
+  | 'PUBLISHED'
+  | 'CANCELLED'
+  | 'COMPLETED';
+
 export interface Event {
   id: string;
   title: string;
@@ -18,6 +24,8 @@ export interface Event {
   image: string;
   date: string;
   time: string;
+  startTime?: string;
+  endTime?: string;
   location: string;
   address?: string;
   city?: string;
@@ -26,7 +34,7 @@ export interface Event {
   booked: number;
   organizerId: string;
   organizerName: string;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status: EventStatus;
   featured?: boolean;
 }
 

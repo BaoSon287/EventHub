@@ -10,6 +10,7 @@ import { useToast } from '../components/ui/ToastProvider';
 import { getErrorMessage } from '../utils/getErrorMessage';
 import { defaultEventImages } from '../data/defaultImages';
 import { buildGoogleMapsSearchUrl } from '../utils/googleMaps';
+import type { EventStatus } from '../types/domain';
 
 export const CreateEventPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,9 +29,8 @@ export const CreateEventPage: React.FC = () => {
   const [city, setCity] = useState<string>('TP. Hồ Chí Minh');
   const [price, setPrice] = useState<number>(250000);
   const [capacity, setCapacity] = useState<number>(1000);
-  const [status] = useState<'upcoming' | 'ongoing'>('upcoming');
-
   const [loading, setLoading] = useState<boolean>(false);
+  const [submitAction, setSubmitAction] = useState<EventStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const unsplashPresets: Record<'music' | 'tech' | 'art' | 'food' | 'sport', string> = {
@@ -53,10 +53,14 @@ export const CreateEventPage: React.FC = () => {
 
   const mapsPreviewUrl = buildGoogleMapsSearchUrl({ location, address, city });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent, nextStatus: EventStatus = 'PUBLISHED') => {
     e.preventDefault();
     const { start, end } = getTimeRange();
-    if (!title.trim() || !description.trim() || !content.trim() || !location.trim() || !date || !start || !end) {
+    if (!title.trim()) {
+      setError('Vui lòng nhập tên sự kiện trước khi lưu.');
+      return;
+    }
+    if (nextStatus === 'PUBLISHED' && (!description.trim() || !content.trim() || !location.trim() || !date || !start || !end)) {
       setError('Vui lòng điền đầy đủ các thông tin bắt buộc.');
       return;
     }
@@ -64,16 +68,17 @@ export const CreateEventPage: React.FC = () => {
       setError('Số lượng vé và giá vé không được âm.');
       return;
     }
-    if (`${date}T${start}:00` >= `${date}T${end}:00`) {
+    if (date && start && end && `${date}T${start}:00` >= `${date}T${end}:00`) {
       setError('Thời gian bắt đầu phải trước thời gian kết thúc.');
       return;
     }
 
     setLoading(true);
+    setSubmitAction(nextStatus);
     setError(null);
 
     try {
-      await eventApi.create({
+      await eventApi.createEvent({
         title: title.trim(),
         description: description.trim(),
         content: content.trim(),
@@ -86,7 +91,7 @@ export const CreateEventPage: React.FC = () => {
         city: city.trim(),
         price,
         capacity,
-        status,
+        status: nextStatus,
         featured: false
       });
       toast.success('Đã tạo sự kiện', 'Sự kiện mới đã được lưu vào dashboard.');
@@ -97,6 +102,7 @@ export const CreateEventPage: React.FC = () => {
       toast.error('Không thể tạo sự kiện', message);
     } finally {
       setLoading(false);
+      setSubmitAction(null);
     }
   };
 
@@ -128,12 +134,11 @@ export const CreateEventPage: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-slate-100 bg-white p-6 text-xs font-semibold text-slate-600 shadow-xs sm:p-8">
+        <form onSubmit={(e) => handleSubmit(e, 'PUBLISHED')} className="space-y-6 rounded-2xl border border-slate-100 bg-white p-6 text-xs font-semibold text-slate-600 shadow-xs sm:p-8">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase text-slate-400">Tên sự kiện <span className="text-red-500">*</span></label>
             <input
               type="text"
-              required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Nhập tên sự kiện thu hút người xem..."
@@ -212,7 +217,6 @@ export const CreateEventPage: React.FC = () => {
             <label className="text-[10px] font-black uppercase text-slate-400">Mô tả ngắn <span className="text-red-500">*</span></label>
             <input
               type="text"
-              required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Nhập mô tả tóm tắt hiển thị ngoài danh sách sự kiện..."
@@ -225,7 +229,6 @@ export const CreateEventPage: React.FC = () => {
               <label className="text-[10px] font-black uppercase text-slate-400">Ngày diễn ra <span className="text-red-500">*</span></label>
               <input
                 type="date"
-                required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -236,7 +239,6 @@ export const CreateEventPage: React.FC = () => {
               <label className="text-[10px] font-black uppercase text-slate-400">Thời gian <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
                 placeholder="vd: 19:00 - 22:30"
@@ -258,7 +260,6 @@ export const CreateEventPage: React.FC = () => {
                 <label className="text-[10px] font-black uppercase text-slate-400">Venue / location <span className="text-red-500">*</span></label>
                 <input
                   type="text"
-                  required
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Example: Van Mieu - Quoc Tu Giam"
@@ -305,7 +306,6 @@ export const CreateEventPage: React.FC = () => {
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase text-slate-400">Nội dung chi tiết <span className="text-red-500">*</span></label>
             <textarea
-              required
               rows={7}
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -314,11 +314,21 @@ export const CreateEventPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex justify-end gap-4.5">
-            <Button type="button" variant="outline" onClick={() => navigate('/organizer/dashboard')} className="cursor-pointer border-slate-200 font-bold">
+          <div className="flex flex-col justify-end gap-3 sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => navigate('/organizer/dashboard')} disabled={loading} className="cursor-pointer border-slate-200 font-bold">
               Hủy bỏ
             </Button>
-            <Button type="submit" isLoading={loading} className="cursor-pointer font-extrabold">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={(e) => handleSubmit(e, 'DRAFT')}
+              isLoading={loading && submitAction === 'DRAFT'}
+              disabled={loading}
+              className="cursor-pointer border-slate-200 font-extrabold"
+            >
+              Lưu bản nháp
+            </Button>
+            <Button type="submit" isLoading={loading && submitAction === 'PUBLISHED'} disabled={loading} className="cursor-pointer font-extrabold">
               Phát hành sự kiện
             </Button>
           </div>

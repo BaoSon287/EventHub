@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
 import { EventImage } from '../components/EventImage';
 import { DetailSkeleton } from '../components/ui/Skeleton';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../components/ui/ToastProvider';
 import { getErrorMessage } from '../utils/getErrorMessage';
 import { formatCurrency } from '../utils/formatters';
@@ -28,11 +29,14 @@ export const EventDetailPage: React.FC = () => {
   const [ticketType, setTicketType] = useState<'standard' | 'vip'>('standard');
   const [quantity, setQuantity] = useState<number>(1);
   const [bookingLoading, setBookingLoading] = useState<boolean>(false);
+  const [publishLoading, setPublishLoading] = useState<boolean>(false);
+  const [cancelLoading, setCancelLoading] = useState<boolean>(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    eventApi.getById(id)
+    eventApi.getEventDetail(id)
       .then((res) => {
         setEvent(res.data);
       })
@@ -65,14 +69,42 @@ export const EventDetailPage: React.FC = () => {
   const availableTickets = Math.max(0, event.capacity - event.booked);
   const maxQuantity = Math.max(1, Math.min(10, availableTickets));
   const isSoldOut = availableTickets <= 0;
+  const now = Date.now();
+  const startAt = event.startTime ? new Date(event.startTime).getTime() : Number.NaN;
+  const endAt = event.endTime ? new Date(event.endTime).getTime() : Number.NaN;
+  const hasStarted = Number.isFinite(startAt) && startAt <= now;
+  const hasEnded = Number.isFinite(endAt) && endAt <= now;
+  const isOwnerOrAdmin = Boolean(user && (user.role === 'admin' || user.id === event.organizerId));
+  const isOwnOrganizerEvent = Boolean(user?.role === 'organizer' && user.id === event.organizerId);
+  const isBookable = event.status === 'PUBLISHED' && !hasStarted && !hasEnded && !isSoldOut && !isOwnOrganizerEvent && !bookingLoading;
+  const canPublish = isOwnerOrAdmin && event.status === 'DRAFT';
+  const canCancel = isOwnerOrAdmin && event.status === 'PUBLISHED';
+  const canEdit = isOwnerOrAdmin && (event.status === 'DRAFT' || event.status === 'PUBLISHED');
   const mapsSearchUrl = buildGoogleMapsSearchUrl(event);
   const mapsDirectionsUrl = buildGoogleMapsDirectionsUrl(event);
+
+  const getBookingBlockReason = () => {
+    if (event.status === 'DRAFT') return 'Sự kiện đang là bản nháp và chưa nhận booking.';
+    if (event.status === 'CANCELLED') return 'Sự kiện đã hủy và không nhận booking mới.';
+    if (event.status === 'COMPLETED' || hasEnded) return 'Sự kiện đã kết thúc.';
+    if (hasStarted) return 'Sự kiện đã bắt đầu.';
+    if (isSoldOut) return 'Đã hết vé sự kiện.';
+    if (isOwnOrganizerEvent) return 'Nhà tổ chức không thể tự đặt vé sự kiện của mình.';
+    return null;
+  };
+
+  const bookingBlockReason = getBookingBlockReason();
 
   const handleBooking = async () => {
     if (!user) {
       // Guide profile login with redirect back URL
       toast.info('Vui lòng đăng nhập', 'Bạn cần đăng nhập trước khi đặt vé.');
       navigate(`/login?redirect=${encodeURIComponent(`/events/${event.id}`)}`);
+      return;
+    }
+
+    if (!isBookable) {
+      toast.error('Không thể đặt vé', bookingBlockReason || 'Sự kiện chưa sẵn sàng để đặt vé.');
       return;
     }
 
@@ -95,6 +127,35 @@ export const EventDetailPage: React.FC = () => {
       toast.error('Không thể đặt vé', getErrorMessage(err));
     } finally {
       setBookingLoading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!event) return;
+    setPublishLoading(true);
+    try {
+      const res = await eventApi.publishEvent(event.id);
+      setEvent(res.data);
+      toast.success('Đã công khai sự kiện', 'Sự kiện hiện có thể xuất hiện trên danh sách public.');
+    } catch (err) {
+      toast.error('Không thể công khai sự kiện', getErrorMessage(err));
+    } finally {
+      setPublishLoading(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!event) return;
+    setCancelLoading(true);
+    try {
+      const res = await eventApi.cancelEvent(event.id);
+      setEvent(res.data);
+      setCancelDialogOpen(false);
+      toast.success('Đã hủy sự kiện', 'Sự kiện sẽ không nhận booking mới.');
+    } catch (err) {
+      toast.error('Không thể hủy sự kiện', getErrorMessage(err));
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -139,6 +200,42 @@ export const EventDetailPage: React.FC = () => {
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white leading-tight">
               {event.title}
             </h1>
+            {isOwnerOrAdmin && (
+              <div className="flex flex-wrap gap-2">
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/organizer/dashboard')}
+                    className="border-white/30 bg-white/15 text-white hover:bg-white/25"
+                  >
+                    Sửa
+                  </Button>
+                )}
+                {canPublish && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    isLoading={publishLoading}
+                    onClick={handlePublish}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    Công khai
+                  </Button>
+                )}
+                {canCancel && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    Hủy sự kiện
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -341,15 +438,21 @@ export const EventDetailPage: React.FC = () => {
             </div>
 
             {/* Checkout Action Button */}
-            {isSoldOut ? (
+            {bookingBlockReason ? (
+              <div className="space-y-2">
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs font-bold text-amber-700">
+                  {bookingBlockReason}
+                </p>
               <Button variant="outline" className="w-full cursor-not-allowed justify-center" disabled>
                 Đã hết vé sự kiện
               </Button>
+              </div>
             ) : (
               <Button
                 variant="primary"
                 onClick={handleBooking}
                 isLoading={bookingLoading}
+                disabled={!isBookable}
                 className="w-full justify-center py-3 font-extrabold shadow-md hover:shadow-lg transition-transform"
               >
                 {user ? 'Đăng ký Đặt vé ngay' : 'Đăng nhập để Đặt vé'}
@@ -363,6 +466,18 @@ export const EventDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={cancelDialogOpen}
+        title="Hủy sự kiện?"
+        description="Sự kiện sẽ không nhận booking mới sau khi bị hủy."
+        confirmText="Hủy sự kiện"
+        cancelText="Giữ sự kiện"
+        variant="danger"
+        isLoading={cancelLoading}
+        onCancel={() => setCancelDialogOpen(false)}
+        onConfirm={handleCancel}
+      />
     </div>
   );
 };

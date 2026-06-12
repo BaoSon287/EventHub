@@ -21,7 +21,7 @@
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": "{{baseUrl}}/api/auth/register",
-            "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"123456\",\"fullName\":\"Demo User\",\"role\":\"USER\"}" }
+            "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"Password123\",\"fullName\":\"Demo User\",\"role\":\"USER\"}" }
           }
         },
         {
@@ -30,7 +30,7 @@
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": "{{baseUrl}}/api/auth/register",
-            "body": { "mode": "raw", "raw": "{\"email\":\"organizer@example.com\",\"password\":\"123456\",\"fullName\":\"Demo Organizer\",\"role\":\"ORGANIZER\"}" }
+            "body": { "mode": "raw", "raw": "{\"email\":\"organizer@example.com\",\"password\":\"Password123\",\"fullName\":\"Demo Organizer\",\"role\":\"ORGANIZER\"}" }
           }
         },
         {
@@ -39,7 +39,7 @@
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "url": "{{baseUrl}}/api/auth/login",
-            "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"123456\"}" }
+            "body": { "mode": "raw", "raw": "{\"email\":\"user@example.com\",\"password\":\"Password123\"}" }
           }
         },
         {
@@ -63,7 +63,7 @@
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
             "url": "{{baseUrl}}/api/events",
-            "body": { "mode": "raw", "raw": "{\"title\":\"Demo Event\",\"description\":\"Demo event\",\"category\":\"Technology\",\"location\":\"Demo Hall\",\"address\":\"1 Demo Street\",\"city\":\"Ha Noi\",\"startTime\":\"2026-12-01T09:00:00\",\"endTime\":\"2026-12-01T17:00:00\",\"totalTickets\":100,\"price\":100000,\"imageUrl\":\"https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1200\",\"status\":\"PUBLISHED\"}" }
+            "body": { "mode": "raw", "raw": "{\"title\":\"Demo Event\",\"description\":\"Demo event\",\"category\":\"Technology\",\"location\":\"Demo Hall\",\"address\":\"1 Demo Street\",\"city\":\"Ha Noi\",\"startTime\":\"2026-12-01T09:00:00\",\"endTime\":\"2026-12-01T17:00:00\",\"totalTickets\":100,\"price\":100000,\"imageUrl\":\"https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=1200\",\"status\":\"DRAFT\"}" }
           }
         },
         { "name": "Publish Event", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }], "url": "{{baseUrl}}/api/events/{{eventId}}/publish" } },

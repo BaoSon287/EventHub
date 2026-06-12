@@ -66,9 +66,9 @@ export const calculateOrganizerStats = (events: Event[], bookings: Booking[], pa
 
   return {
     totalEvents: events.length,
-    publishedEvents: events.filter((event) => event.status === 'upcoming' || event.status === 'ongoing').length,
+    publishedEvents: events.filter((event) => event.status === 'PUBLISHED').length,
     draftEvents: events.filter((event) => normalizeStatus(event.status) === 'DRAFT').length,
-    cancelledEvents: events.filter((event) => event.status === 'cancelled').length,
+    cancelledEvents: events.filter((event) => event.status === 'CANCELLED').length,
     totalBookings: bookings.reduce((sum, booking) => sum + booking.quantity, 0),
     totalRevenue: bookings.reduce((sum, booking) => sum + Number(booking.totalPrice || 0), 0),
     paidRevenue: paidPayments.length

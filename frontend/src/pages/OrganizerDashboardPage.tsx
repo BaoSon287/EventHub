@@ -15,7 +15,7 @@ import { authApi } from '../api/authApi';
 import { bookingApi } from '../api/bookingApi';
 import { eventApi } from '../api/eventApi';
 import { paymentApi, PaymentRecord } from '../api/paymentApi';
-import { Booking, Event, User } from '../types/domain';
+import { Booking, Event, EventStatus, User } from '../types/domain';
 import { Sidebar } from '../components/Sidebar';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -49,6 +49,7 @@ export const OrganizerDashboardPage: React.FC = () => {
   const [user] = useState<User | null>(authApi.getCurrentUser());
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<EventStatus | 'ALL'>('ALL');
 
   const fetchOrganizerEvents = async () => {
     if (!user) return;
@@ -57,7 +58,7 @@ export const OrganizerDashboardPage: React.FC = () => {
     try {
       const eventResponse = user.role === 'admin'
         ? await eventApi.getAll()
-        : await eventApi.getByOrganizer(user.id);
+        : await eventApi.getOrganizerEvents(user.id);
       const organizerEvents = eventResponse.data;
       const bookingResults = await Promise.allSettled(
         organizerEvents.map((event) => bookingApi.getByEvent(event.id))
@@ -90,9 +91,14 @@ export const OrganizerDashboardPage: React.FC = () => {
   }, [user, navigate]);
 
   const handleDelete = async (id: string) => {
+    const target = events.find((event) => event.id === id);
     setDeleteLoading(true);
     try {
-      await eventApi.delete(id);
+      if (target?.status === 'DRAFT') {
+        await eventApi.delete(id);
+      } else {
+        await eventApi.cancelEvent(id);
+      }
       toast.success('Đã hủy sự kiện');
       setDeleteTargetId(null);
       fetchOrganizerEvents();
@@ -109,8 +115,23 @@ export const OrganizerDashboardPage: React.FC = () => {
   const eventsByStatus = useMemo(() => countByStatus(events, 'status'), [events]);
   const paymentsByStatus = useMemo(() => countByStatus(payments, 'status'), [payments]);
   const topEvents = useMemo(() => buildTopEvents(events), [events]);
-  const recentEvents = useMemo(() => [...events].slice(0, 6), [events]);
+  const filteredEvents = useMemo(
+    () => statusFilter === 'ALL' ? events : events.filter((event) => event.status === statusFilter),
+    [events, statusFilter]
+  );
+  const recentEvents = useMemo(() => [...filteredEvents].slice(0, 6), [filteredEvents]);
   const recentBookings = useMemo(() => [...bookings].slice(0, 6), [bookings]);
+  const deleteTarget = useMemo(
+    () => events.find((event) => event.id === deleteTargetId) || null,
+    [events, deleteTargetId]
+  );
+  const statusOptions: Array<{ value: EventStatus | 'ALL'; label: string }> = [
+    { value: 'ALL', label: 'Tất cả' },
+    { value: 'DRAFT', label: 'Bản nháp' },
+    { value: 'PUBLISHED', label: 'Đã công khai' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
+    { value: 'COMPLETED', label: 'Đã kết thúc' },
+  ];
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -183,6 +204,23 @@ export const OrganizerDashboardPage: React.FC = () => {
 
             <TopEventsTable events={topEvents} />
 
+            <div className="flex flex-wrap gap-2">
+              {statusOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStatusFilter(option.value)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                    statusFilter === option.value
+                      ? 'border-indigo-600 bg-indigo-600 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <RecentTable
                 title="Recent Events"
@@ -196,14 +234,18 @@ export const OrganizerDashboardPage: React.FC = () => {
                     key: 'actions',
                     label: 'Actions',
                     render: (event) => (
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTargetId(event.id)}
-                        className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
-                        aria-label={`Cancel ${event.title}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      event.status === 'DRAFT' || event.status === 'PUBLISHED' ? (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTargetId(event.id)}
+                          className="rounded-lg p-2 text-red-500 transition hover:bg-red-50"
+                          aria-label={`${event.status === 'DRAFT' ? 'Delete draft' : 'Cancel event'} ${event.title}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <span className="text-xs font-semibold text-slate-400">Locked</span>
+                      )
                     ),
                   },
                 ]}
@@ -226,9 +268,11 @@ export const OrganizerDashboardPage: React.FC = () => {
 
       <ConfirmDialog
         open={Boolean(deleteTargetId)}
-        title="Cancel event?"
-        description="This will switch the event to cancelled on the backend."
-        confirmText="Cancel event"
+        title={deleteTarget?.status === 'DRAFT' ? 'Delete draft?' : 'Cancel event?'}
+        description={deleteTarget?.status === 'DRAFT'
+          ? 'This draft will be permanently deleted if it has no business links.'
+          : 'This event will stop receiving new bookings.'}
+        confirmText={deleteTarget?.status === 'DRAFT' ? 'Delete draft' : 'Cancel event'}
         cancelText="Keep event"
         variant="danger"
         isLoading={deleteLoading}

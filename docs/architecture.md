@@ -14,11 +14,25 @@ EventHub uses a microservices architecture with one service per major business c
 1. The frontend sends booking requests to `api-gateway`.
 2. The gateway forwards `/api/bookings/**` to `booking-service`.
 3. Booking Service reads the current user from JWT.
-4. Booking Service calls Event Service through Eureka using OpenFeign.
-5. Event Service owns event ticket counts and reserves or releases tickets.
-6. Booking Service stores booking records in `booking_db`.
+4. Booking Service calls Event Service internal APIs through OpenFeign with `X-Internal-Api-Key`.
+5. Event Service verifies the event is `PUBLISHED`, has not started or ended, is not `CANCELLED`/`COMPLETED`, and has enough tickets.
+6. Event Service owns event ticket counts and reserves or releases tickets.
+7. Booking Service stores booking records in `booking_db` only after reservation succeeds.
 
 Event Service prevents overselling by reserving tickets inside a transaction with a pessimistic database lock. Booking Service owns the booking order state; Event Service owns the ticket inventory state.
+
+## Event Lifecycle
+
+Event Service uses these lifecycle statuses:
+
+```text
+DRAFT
+PUBLISHED
+CANCELLED
+COMPLETED
+```
+
+Public event discovery returns only upcoming `PUBLISHED` events. Organizers can view their own events across all statuses. A scheduler periodically marks expired `PUBLISHED` events as `COMPLETED`, and reserve logic also treats expired events as completed before checking ticket availability.
 
 ## Notification Flow
 
@@ -74,7 +88,7 @@ Payment Service stores transactions in `payment_db`. Booking Service remains the
 
 ## Known Architecture Limitations
 
-- Event internal endpoints are public in the dev stack and need service-to-service authentication for production.
+- Event and Booking internal endpoints require `X-Internal-Api-Key`; production should still add stronger service identity such as mTLS or OAuth2 client credentials.
 - Booking and ticket reservation are not wrapped in a distributed transaction yet.
 - Payment workflow is a simple Saga and does not have a full Outbox Pattern or compensation workflow yet.
 - Notification is still mock/log level for booking confirmations.
