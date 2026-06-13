@@ -39,7 +39,7 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-    public ApiResponse<Void> verifyEmail(@RequestParam String token) {
+    public ApiResponse<Void> verifyEmail(@RequestParam("token") String token) {
         authService.verifyEmail(token);
         return ApiResponse.success("Email verified successfully", null);
     }
