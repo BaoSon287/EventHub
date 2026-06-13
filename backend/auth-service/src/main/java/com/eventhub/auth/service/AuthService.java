@@ -82,7 +82,7 @@ public class AuthService {
                 .emailVerified(false)
                 .build());
 
-        createUserProfile(user);
+        createUserProfileIfPossible(user);
         String verificationToken = createVerificationToken(user);
         emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         log.info("SECURITY_AUDIT action=REGISTER_SUCCESS userId={} role={}", user.getId(), user.getRole());
@@ -167,7 +167,7 @@ public class AuthService {
         return new CurrentUserResponse(user.getId(), user.getEmail(), user.getFullName(), user.getPhone(), user.getRole());
     }
 
-    private void createUserProfile(AuthUser user) {
+    private void createUserProfileIfPossible(AuthUser user) {
         try {
             userServiceClient.createProfile(new CreateUserProfileRequest(
                     user.getId(),
@@ -176,8 +176,11 @@ public class AuthService {
                     user.getPhone()
             ));
         } catch (Exception ex) {
-            log.error("Failed to create user profile for authUserId={}", user.getId(), ex);
-            throw new BadRequestException("Register failed because user profile could not be created");
+            log.warn(
+                    "User profile was not created during registration for authUserId={}. It can be synchronized later. cause={}",
+                    user.getId(),
+                    ex.toString()
+            );
         }
     }
 

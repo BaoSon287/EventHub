@@ -109,6 +109,30 @@ class AuthServiceTest {
     }
 
     @Test
+    void registerStillSucceedsWhenUserProfileCannotBeCreated() {
+        when(repository.existsByEmail("user@gmail.com")).thenReturn(false);
+        when(passwordEncoder.encode("123456")).thenReturn("bcrypt-hash");
+        when(repository.save(any(AuthUser.class))).thenAnswer(invocation -> {
+            AuthUser user = invocation.getArgument(0);
+            user.setId(10L);
+            return user;
+        });
+        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userServiceClient.createProfile(any())).thenThrow(new RuntimeException("user-service unavailable"));
+
+        AuthResponse response = service.register(new RegisterRequest(
+                "user@gmail.com",
+                "123456",
+                "Nguyen Van A",
+                null,
+                null
+        ));
+
+        assertThat(response.email()).isEqualTo("user@gmail.com");
+        verify(emailService).sendVerificationEmail(eq("user@gmail.com"), any(String.class));
+    }
+
+    @Test
     void registerAdminRoleFails() {
         when(repository.existsByEmail("admin@gmail.com")).thenReturn(false);
 
