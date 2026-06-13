@@ -16,15 +16,21 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final String mailFrom;
     private final String frontendUrl;
+    private final String mailUsername;
+    private final String mailPassword;
 
     public EmailService(
             JavaMailSender mailSender,
             @Value("${eventhub.mail.from}") String mailFrom,
-            @Value("${eventhub.mail.frontend-url}") String frontendUrl
+            @Value("${eventhub.mail.frontend-url}") String frontendUrl,
+            @Value("${spring.mail.username:}") String mailUsername,
+            @Value("${spring.mail.password:}") String mailPassword
     ) {
         this.mailSender = mailSender;
         this.mailFrom = mailFrom;
         this.frontendUrl = frontendUrl;
+        this.mailUsername = mailUsername;
+        this.mailPassword = mailPassword;
     }
 
     public void sendVerificationEmail(String userEmail, String token) {
@@ -54,6 +60,7 @@ public class EmailService {
     }
 
     public void sendSimpleMail(String to, String subject, String htmlContent) {
+        validateMailConfiguration();
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
@@ -66,6 +73,18 @@ public class EmailService {
             throw new IllegalStateException("Could not send email", ex);
         } catch (MessagingException ex) {
             throw new IllegalStateException("Could not build email message", ex);
+        }
+    }
+
+    private void validateMailConfiguration() {
+        if (mailUsername == null || mailUsername.isBlank()) {
+            throw new IllegalStateException("MAIL_USERNAME is not configured");
+        }
+        if (mailPassword == null || mailPassword.isBlank()) {
+            throw new IllegalStateException("MAIL_PASSWORD is not configured");
+        }
+        if (mailFrom == null || mailFrom.isBlank() || mailFrom.endsWith("@eventhub.local")) {
+            throw new IllegalStateException("MAIL_FROM is not configured");
         }
     }
 

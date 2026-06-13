@@ -88,7 +88,7 @@ public class AuthService {
         try {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception ex) {
-            log.error("Verification email could not be sent for userId={}. cause={}", user.getId(), ex.toString());
+            log.error("Verification email could not be sent for userId={}. cause={}", user.getId(), rootCauseMessage(ex));
             throw new ServiceUnavailableException("Verification email could not be sent. Please check SMTP configuration.");
         }
         log.info("SECURITY_AUDIT action=REGISTER_SUCCESS userId={} role={}", user.getId(), user.getRole());
@@ -140,7 +140,7 @@ public class AuthService {
             try {
                 emailService.sendPasswordResetEmail(user.getEmail(), token);
             } catch (Exception ex) {
-                log.error("Password reset email could not be sent for userId={}. cause={}", user.getId(), ex.toString());
+                log.error("Password reset email could not be sent for userId={}. cause={}", user.getId(), rootCauseMessage(ex));
                 throw new ServiceUnavailableException("Password reset email could not be sent. Please check SMTP configuration.");
             }
             log.info("SECURITY_AUDIT action=PASSWORD_RESET_REQUESTED userId={} role={}", user.getId(), user.getRole());
@@ -245,5 +245,13 @@ public class AuthService {
         byte[] bytes = new byte[TOKEN_BYTES];
         SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String rootCauseMessage(Exception exception) {
+        Throwable root = exception;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        return root.getClass().getSimpleName() + ": " + root.getMessage();
     }
 }
