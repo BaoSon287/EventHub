@@ -12,6 +12,7 @@ type BackendUser = {
 };
 
 type LoginResponse = {
+  token?: string;
   accessToken: string;
   tokenType: string;
   user: BackendUser;
@@ -34,28 +35,41 @@ const toUiUser = (user: BackendUser): User => ({
 });
 
 export const authApi = {
-  login: async (username: string, password: string) => {
-    const response = await axiosClient.post('/api/auth/login', { email: username, password });
+  login: async (email: string, password: string) => {
+    const response = await axiosClient.post('/api/auth/login', { email, password });
     const data = unwrap<LoginResponse>(response);
+    const token = data.token || data.accessToken;
     let user = toUiUser(data.user);
-    if (data.accessToken) {
-      localStorage.setItem('eventhub_access_token', data.accessToken);
+    if (token) {
+      localStorage.setItem('eventhub_access_token', token);
       user = await userApi.syncCurrentProfile(user);
       localStorage.setItem('eventhub_current_user', JSON.stringify(user));
     }
-    return { data: { accessToken: data.accessToken, user } };
+    return { data: { accessToken: token, token, user } };
   },
 
-  register: async (userData: { username: string; email: string; name: string; password: string; role: 'organizer' | 'attendee' }) => {
+  register: async (userData: { email: string; fullName: string; password: string; role?: 'organizer' | 'attendee' }) => {
     const role = userData.role === 'organizer' ? 'ORGANIZER' : 'USER';
     const response = await axiosClient.post('/api/auth/register', {
       email: userData.email,
       password: userData.password,
-      fullName: userData.name,
+      fullName: userData.fullName,
       role
     });
     const user = toUiUser(unwrap<BackendUser>(response));
     return { data: { accessToken: '', user } };
+  },
+
+  verifyEmail: async (token: string) => {
+    await axiosClient.get('/api/auth/verify-email', { params: { token } });
+  },
+
+  forgotPassword: async (email: string) => {
+    await axiosClient.post('/api/auth/forgot-password', { email });
+  },
+
+  resetPassword: async (token: string, newPassword: string, confirmPassword: string) => {
+    await axiosClient.post('/api/auth/reset-password', { token, newPassword, confirmPassword });
   },
 
   logout: () => {

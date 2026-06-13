@@ -29,6 +29,7 @@ axiosClient.interceptors.response.use(
     const message = error.response?.status === 403
       ? (error.response?.data?.message || 'Bạn không có quyền thực hiện thao tác này.')
       : (error.response?.data?.message || error.message || 'Request failed');
+
     if (error.response?.status === 401) {
       localStorage.removeItem('eventhub_access_token');
       localStorage.removeItem('eventhub_current_user');
@@ -36,6 +37,7 @@ axiosClient.interceptors.response.use(
         window.location.href = `/login?message=${encodeURIComponent('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.')}`;
       }
     }
+
     return Promise.reject(new Error(message));
   }
 );

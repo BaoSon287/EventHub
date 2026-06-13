@@ -46,6 +46,7 @@ public class DemoAuthUserSeeder implements ApplicationRunner {
                     .fullName(fullName)
                     .role(role.name())
                     .enabled(true)
+                    .emailVerified(true)
                     .build());
             log.info("Seeded demo auth user email={} role={}", email, role);
             return created;

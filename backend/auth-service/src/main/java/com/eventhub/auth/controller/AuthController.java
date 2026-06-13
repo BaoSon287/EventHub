@@ -2,9 +2,11 @@ package com.eventhub.auth.controller;
 
 import com.eventhub.auth.dto.AuthResponse;
 import com.eventhub.auth.dto.CurrentUserResponse;
+import com.eventhub.auth.dto.ForgotPasswordRequest;
 import com.eventhub.auth.dto.LoginResponse;
 import com.eventhub.auth.dto.LoginRequest;
 import com.eventhub.auth.dto.RegisterRequest;
+import com.eventhub.auth.dto.ResetPasswordRequest;
 import com.eventhub.auth.security.CustomUserDetails;
 import com.eventhub.auth.service.AuthService;
 import com.eventhub.common.dto.ApiResponse;
@@ -28,12 +30,30 @@ public class AuthController {
 
     @PostMapping("/register")
     public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ApiResponse.success("Register successfully", authService.register(request));
+        return ApiResponse.success("Register successfully. Please check your email to verify your account.", authService.register(request));
     }
 
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success("Login successfully", authService.login(request));
+    }
+
+    @GetMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ApiResponse.success("Email verified successfully", null);
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ApiResponse.success("If this email exists, a reset link has been sent.", null);
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ApiResponse.success("Password reset successfully", null);
     }
 
     @GetMapping("/me")

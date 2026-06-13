@@ -32,6 +32,9 @@ public class AuthUser {
     private String role;
 
     private boolean enabled;
+
+    private Boolean emailVerified;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -39,7 +42,6 @@ public class AuthUser {
     void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
-        enabled = true;
     }
 
     @PreUpdate

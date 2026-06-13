@@ -11,6 +11,9 @@ import { EventListPage } from './pages/EventListPage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { VerifyEmailResultPage } from './pages/VerifyEmailResultPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -54,6 +57,9 @@ export default function App() {
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailResultPage />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/my-bookings" element={<MyBookingsPage />} />
               <Route path="/payments/:bookingId" element={<PaymentPage />} />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, UserCheck, Building2 } from 'lucide-react';
+import { User, Mail, Lock, Building2 } from 'lucide-react';
 import { authApi } from '../api/authApi';
 import { Button } from '../components/Button';
 import { useToast } from '../components/ui/ToastProvider';
@@ -9,29 +9,35 @@ import { getErrorMessage } from '../utils/getErrorMessage';
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const [username, setUsername] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [name, setName] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'attendee' | 'organizer'>('attendee');
-
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const normalizedEmail = email.trim();
+    const normalizedFullName = fullName.trim();
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!username.trim() || !email.trim() || !name.trim() || !password) {
-      setError('Vui lòng điền đầy đủ tất cả thông tin đăng ký.');
+
+    if (!normalizedFullName || !normalizedEmail || !password || !confirmPassword) {
+      setError('Vui lòng điền đầy đủ thông tin đăng ký.');
       return;
     }
-    if (!emailPattern.test(email)) {
+    if (!emailPattern.test(normalizedEmail)) {
       setError('Email không hợp lệ.');
       return;
     }
-    if (password.length < 8) {
-      setError('Mật khẩu phải có ít nhất 8 ký tự.');
+    if (password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp.');
       return;
     }
 
@@ -40,15 +46,14 @@ export const RegisterPage: React.FC = () => {
 
     try {
       await authApi.register({
-        username: username.trim(),
-        email: email.trim(),
-        name: name.trim(),
+        email: normalizedEmail,
+        fullName: normalizedFullName,
         password,
         role
       });
 
-      toast.success('Đăng ký thành công', 'Vui lòng đăng nhập để bắt đầu sử dụng EventHub.');
-      navigate('/login?message=Đăng ký thành công. Vui lòng đăng nhập.');
+      toast.success('Đăng ký thành công', 'Vui lòng kiểm tra email để xác thực tài khoản.');
+      navigate('/login?message=Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.');
     } catch (err) {
       const message = getErrorMessage(err, 'Lỗi đăng ký tài khoản.');
       setError(message);
@@ -59,17 +64,14 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-10 px-4 flex items-center justify-center relative overflow-hidden">
-      <div className="absolute -top-12 -left-12 w-96 h-96 bg-indigo-200/40 rounded-full filter blur-3xl opacity-25 z-0"></div>
-      <div className="absolute bottom-0 right-0 w-80 h-80 bg-rose-200/30 rounded-full filter blur-3xl opacity-25 z-0 text-white"></div>
-
-      <div className="w-full max-w-lg bg-white border border-slate-100 rounded-2xl shadow-xl p-8 space-y-6 relative z-10">
+    <div className="bg-slate-50 min-h-screen py-10 px-4 flex items-center justify-center">
+      <div className="w-full max-w-lg bg-white border border-slate-100 rounded-2xl shadow-xl p-8 space-y-6">
         <div className="text-center space-y-1.5">
           <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-extrabold text-xl mx-auto shadow-md">
             EH
           </div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">Tạo tài khoản mới</h2>
-          <p className="text-xs font-semibold text-slate-400">Tham gia hệ thống quản lý sự kiện thông minh</p>
+          <p className="text-xs font-semibold text-slate-400">Tham gia EventHub để đặt vé hoặc tổ chức sự kiện</p>
         </div>
 
         {error && (
@@ -81,29 +83,37 @@ export const RegisterPage: React.FC = () => {
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400">Tên đăng nhập</label>
+              <label className="text-[10px] font-black uppercase text-slate-400" htmlFor="register-full-name">
+                Họ và tên
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
+                  id="register-full-name"
                   type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="vd: khachhang1"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nguyen Van A"
                   className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  autoComplete="name"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400">Địa chỉ Email</label>
+              <label className="text-[10px] font-black uppercase text-slate-400" htmlFor="register-email">
+                Email
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
+                  id="register-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="vd: user@gmail.com"
+                  placeholder="user@gmail.com"
                   className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -111,36 +121,44 @@ export const RegisterPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400">Họ và Tên</label>
+              <label className="text-[10px] font-black uppercase text-slate-400" htmlFor="register-password">
+                Mật khẩu
+              </label>
               <div className="relative">
-                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nhập họ và tên"
+                  id="register-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Tối thiểu 6 ký tự"
                   className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  autoComplete="new-password"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400">Mật khẩu</label>
+              <label className="text-[10px] font-black uppercase text-slate-400" htmlFor="register-confirm-password">
+                Xác nhận mật khẩu
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
+                  id="register-confirm-password"
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Tối thiểu 8 ký tự"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu"
                   className="w-full bg-slate-50 font-semibold border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                  autoComplete="new-password"
                 />
               </div>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase text-slate-400">Vai trò của bạn</label>
+            <label className="text-[10px] font-black uppercase text-slate-400">Vai trò</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
@@ -148,13 +166,14 @@ export const RegisterPage: React.FC = () => {
                 className={`flex items-center gap-3 p-3 border rounded-xl transition cursor-pointer select-none text-left ${
                   role === 'attendee' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 hover:bg-slate-50'
                 }`}
+                aria-pressed={role === 'attendee'}
               >
                 <div className={`p-1.5 rounded-lg ${role === 'attendee' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                   <User className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-800">Người mua vé</p>
-                  <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">Đặt vé và lưu QR</p>
+                  <p className="text-xs font-bold text-slate-800">Người tham dự</p>
+                  <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">Đặt vé và quản lý vé</p>
                 </div>
               </button>
 
@@ -164,13 +183,14 @@ export const RegisterPage: React.FC = () => {
                 className={`flex items-center gap-3 p-3 border rounded-xl transition cursor-pointer select-none text-left ${
                   role === 'organizer' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 hover:bg-slate-50'
                 }`}
+                aria-pressed={role === 'organizer'}
               >
                 <div className={`p-1.5 rounded-lg ${role === 'organizer' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-800">Nhà tổ chức</p>
-                  <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">Quản lý và bán vé online</p>
+                  <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">Tạo và bán vé sự kiện</p>
                 </div>
               </button>
             </div>
