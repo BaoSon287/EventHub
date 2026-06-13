@@ -20,7 +20,7 @@ All service responses follow this format:
 - `POST /api/auth/reset-password`
 - `GET /api/auth/me`
 
-Auth Service sends account verification and password reset emails through the Resend HTTPS API. Configure `RESEND_API_KEY`, `MAIL_FROM`, and `FRONTEND_URL` in deployed environments.
+Auth Service sends account verification and password reset emails through the SendGrid HTTPS API. Configure `SENDGRID_API_KEY`, `MAIL_FROM`, and `FRONTEND_URL` in deployed environments.
 
 ## User Service
 

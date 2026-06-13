@@ -36,5 +36,5 @@ eventhub:
   mail:
     from: ${MAIL_FROM:no-reply@eventhub.local}
     frontend-url: ${FRONTEND_URL:http://localhost:5173}
-    resend-api-url: ${RESEND_API_URL:https://api.resend.com}
-    resend-api-key: ${RESEND_API_KEY:}
+    sendgrid-api-url: ${SENDGRID_API_URL:https://api.sendgrid.com}
+    sendgrid-api-key: ${SENDGRID_API_KEY:}

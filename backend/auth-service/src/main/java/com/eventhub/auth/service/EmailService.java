@@ -11,24 +11,28 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class EmailService {
+    private static final Pattern MAILBOX_PATTERN = Pattern.compile("^(.+?)\\s*<([^>]+)>$");
+
     private final RestClient restClient;
-    private final String resendApiKey;
+    private final String sendGridApiKey;
     private final String mailFrom;
     private final String frontendUrl;
 
     public EmailService(
-            @Value("${eventhub.mail.resend-api-url}") String resendApiUrl,
-            @Value("${eventhub.mail.resend-api-key}") String resendApiKey,
+            @Value("${eventhub.mail.sendgrid-api-url}") String sendGridApiUrl,
+            @Value("${eventhub.mail.sendgrid-api-key}") String sendGridApiKey,
             @Value("${eventhub.mail.from}") String mailFrom,
             @Value("${eventhub.mail.frontend-url}") String frontendUrl
     ) {
         this.restClient = RestClient.builder()
-                .baseUrl(resendApiUrl)
+                .baseUrl(sendGridApiUrl)
                 .build();
-        this.resendApiKey = resendApiKey;
+        this.sendGridApiKey = sendGridApiKey;
         this.mailFrom = mailFrom;
         this.frontendUrl = frontendUrl;
     }
@@ -63,14 +67,19 @@ public class EmailService {
         validateMailConfiguration();
         try {
             restClient.post()
-                    .uri("/emails")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + resendApiKey)
+                    .uri("/v3/mail/send")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + sendGridApiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of(
-                            "from", mailFrom,
-                            "to", List.of(to),
+                            "personalizations", List.of(Map.of(
+                                    "to", List.of(Map.of("email", to))
+                            )),
+                            "from", parseFromAddress(mailFrom),
                             "subject", subject,
-                            "html", htmlContent
+                            "content", List.of(Map.of(
+                                    "type", "text/html",
+                                    "value", htmlContent
+                            ))
                     ))
                     .retrieve()
                     .toBodilessEntity();
@@ -85,12 +94,26 @@ public class EmailService {
     }
 
     private void validateMailConfiguration() {
-        if (resendApiKey == null || resendApiKey.isBlank()) {
-            throw new IllegalStateException("RESEND_API_KEY is not configured");
+        if (sendGridApiKey == null || sendGridApiKey.isBlank()) {
+            throw new IllegalStateException("SENDGRID_API_KEY is not configured");
         }
         if (mailFrom == null || mailFrom.isBlank() || mailFrom.endsWith("@eventhub.local")) {
             throw new IllegalStateException("MAIL_FROM is not configured");
         }
+    }
+
+    private Map<String, String> parseFromAddress(String from) {
+        Matcher matcher = MAILBOX_PATTERN.matcher(from.trim());
+        if (!matcher.matches()) {
+            return Map.of("email", from.trim());
+        }
+
+        String name = matcher.group(1).trim();
+        String email = matcher.group(2).trim();
+        if (name.isBlank()) {
+            return Map.of("email", email);
+        }
+        return Map.of("email", email, "name", name);
     }
 
     private String trimResponse(String responseBody) {
