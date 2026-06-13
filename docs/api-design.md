@@ -13,9 +13,14 @@ All service responses follow this format:
 ## Auth Service
 
 - `GET /api/auth/health`
-- `POST /api/auth/register`
+- `POST /api/auth/register` creates a disabled account, sends a verification email, and requires email verification before login
+- `GET /api/auth/verify-email?token=...`
 - `POST /api/auth/login`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `GET /api/auth/me`
+
+Auth Service sends account verification and password reset emails through the Resend HTTPS API. Configure `RESEND_API_KEY`, `MAIL_FROM`, and `FRONTEND_URL` in deployed environments.
 
 ## User Service
 

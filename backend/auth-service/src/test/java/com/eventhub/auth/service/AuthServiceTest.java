@@ -144,7 +144,7 @@ class AuthServiceTest {
         });
         when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userServiceClient.createProfile(any())).thenReturn(ApiResponse.success("ok", null));
-        doThrow(new IllegalStateException("smtp auth failed"))
+        doThrow(new IllegalStateException("email api failed"))
                 .when(emailService).sendVerificationEmail(eq("user@gmail.com"), any(String.class));
 
         assertThatThrownBy(() -> service.register(new RegisterRequest(

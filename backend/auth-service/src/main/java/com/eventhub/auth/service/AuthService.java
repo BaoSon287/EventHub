@@ -89,7 +89,7 @@ public class AuthService {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception ex) {
             log.error("Verification email could not be sent for userId={}. cause={}", user.getId(), rootCauseMessage(ex));
-            throw new ServiceUnavailableException("Verification email could not be sent. Please check SMTP configuration.");
+            throw new ServiceUnavailableException("Verification email could not be sent. Please check email provider configuration.");
         }
         log.info("SECURITY_AUDIT action=REGISTER_SUCCESS userId={} role={}", user.getId(), user.getRole());
         return toAuthResponse(user);
@@ -141,7 +141,7 @@ public class AuthService {
                 emailService.sendPasswordResetEmail(user.getEmail(), token);
             } catch (Exception ex) {
                 log.error("Password reset email could not be sent for userId={}. cause={}", user.getId(), rootCauseMessage(ex));
-                throw new ServiceUnavailableException("Password reset email could not be sent. Please check SMTP configuration.");
+                throw new ServiceUnavailableException("Password reset email could not be sent. Please check email provider configuration.");
             }
             log.info("SECURITY_AUDIT action=PASSWORD_RESET_REQUESTED userId={} role={}", user.getId(), user.getRole());
         });

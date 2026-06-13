@@ -1,36 +1,36 @@
 package com.eventhub.auth.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
-    private final JavaMailSender mailSender;
+    private final RestClient restClient;
+    private final String resendApiKey;
     private final String mailFrom;
     private final String frontendUrl;
-    private final String mailUsername;
-    private final String mailPassword;
 
     public EmailService(
-            JavaMailSender mailSender,
+            @Value("${eventhub.mail.resend-api-url}") String resendApiUrl,
+            @Value("${eventhub.mail.resend-api-key}") String resendApiKey,
             @Value("${eventhub.mail.from}") String mailFrom,
-            @Value("${eventhub.mail.frontend-url}") String frontendUrl,
-            @Value("${spring.mail.username:}") String mailUsername,
-            @Value("${spring.mail.password:}") String mailPassword
+            @Value("${eventhub.mail.frontend-url}") String frontendUrl
     ) {
-        this.mailSender = mailSender;
+        this.restClient = RestClient.builder()
+                .baseUrl(resendApiUrl)
+                .build();
+        this.resendApiKey = resendApiKey;
         this.mailFrom = mailFrom;
         this.frontendUrl = frontendUrl;
-        this.mailUsername = mailUsername;
-        this.mailPassword = mailPassword;
     }
 
     public void sendVerificationEmail(String userEmail, String token) {
@@ -62,30 +62,43 @@ public class EmailService {
     public void sendSimpleMail(String to, String subject, String htmlContent) {
         validateMailConfiguration();
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
-            helper.setFrom(mailFrom);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlContent, true);
-            mailSender.send(message);
-        } catch (MailException ex) {
-            throw new IllegalStateException("Could not send email", ex);
-        } catch (MessagingException ex) {
-            throw new IllegalStateException("Could not build email message", ex);
+            restClient.post()
+                    .uri("/emails")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + resendApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "from", mailFrom,
+                            "to", List.of(to),
+                            "subject", subject,
+                            "html", htmlContent
+                    ))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException ex) {
+            throw new IllegalStateException(
+                    "Email API returned " + ex.getStatusCode() + ": " + trimResponse(ex.getResponseBodyAsString()),
+                    ex
+            );
+        } catch (RestClientException ex) {
+            throw new IllegalStateException("Could not call email API", ex);
         }
     }
 
     private void validateMailConfiguration() {
-        if (mailUsername == null || mailUsername.isBlank()) {
-            throw new IllegalStateException("MAIL_USERNAME is not configured");
-        }
-        if (mailPassword == null || mailPassword.isBlank()) {
-            throw new IllegalStateException("MAIL_PASSWORD is not configured");
+        if (resendApiKey == null || resendApiKey.isBlank()) {
+            throw new IllegalStateException("RESEND_API_KEY is not configured");
         }
         if (mailFrom == null || mailFrom.isBlank() || mailFrom.endsWith("@eventhub.local")) {
             throw new IllegalStateException("MAIL_FROM is not configured");
         }
+    }
+
+    private String trimResponse(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "empty response";
+        }
+        String compact = responseBody.replaceAll("\\s+", " ").trim();
+        return compact.length() > 500 ? compact.substring(0, 500) + "..." : compact;
     }
 
     private String buildActionEmail(String title, String message, String buttonText, String link) {

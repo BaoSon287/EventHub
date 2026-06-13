@@ -131,6 +131,16 @@ notification_db
 payment_db
 ```
 
+Auth email delivery uses the Resend HTTPS API, not direct SMTP. For deployed environments set:
+
+```env
+RESEND_API_KEY=your-resend-api-key
+MAIL_FROM=EventHub <onboarding@resend.dev>
+FRONTEND_URL=https://event-hub-seven-lac.vercel.app
+```
+
+Use a verified sender/domain in Resend for production. `FRONTEND_URL` is used to build email verification and password reset links.
+
 ## Local Development
 
 Build all backend modules:
@@ -244,7 +254,7 @@ Main API groups:
 
 | Domain | Endpoints |
 | --- | --- |
-| Auth | `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` |
+| Auth | `POST /api/auth/register`, `GET /api/auth/verify-email`, `POST /api/auth/login`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, `GET /api/auth/me` |
 | Users | `GET /api/users/{id}`, `PUT /api/users/{id}`, avatar upload |
 | Events | `GET /api/events`, `POST /api/events`, `PUT /api/events/{id}`, `PATCH /api/events/{id}/publish`, `PATCH /api/events/{id}/cancel`, `DELETE /api/events/{id}` for drafts |
 | Bookings | `POST /api/bookings`, `GET /api/bookings/me`, cancel, mock pay |
@@ -393,9 +403,11 @@ Authentication:
 
 1. User registers through Auth Service.
 2. Auth Service creates the account in `auth_db`.
-3. Auth Service calls User Service to create the profile in `user_db`.
-4. Login returns a JWT containing `userId`, `email`, and `role`.
-5. Frontend sends the JWT in the `Authorization` header.
+3. Auth Service creates an email verification token and sends the verification email through the Resend HTTPS API.
+4. Auth Service attempts to create the profile in `user_db`; if User Service is temporarily unavailable or the profile already exists, registration still succeeds and the profile can be synchronized later.
+5. Login is blocked until the email is verified.
+6. Login returns a JWT containing `userId`, `email`, and `role`.
+7. Frontend sends the JWT in the `Authorization` header.
 
 Booking:
 
@@ -432,11 +444,12 @@ payment.succeeded
 payment.failed
 ```
 
-Notification Service consumes these events and stores notifications in `notification_db`. Email delivery is currently mocked by logging message content to the console.
+Notification Service consumes these events and stores notifications in `notification_db`. Notification email delivery is currently mocked by logging message content to the console; Auth Service sends account verification and password reset email through Resend.
 
 ## Security Notes
 
 - Passwords are hashed with BCrypt.
+- Newly registered accounts must verify email before login.
 - JWT is used for authentication across protected APIs.
 - Roles are enforced at service level for user, organizer, and admin workflows.
 - Internal endpoints use `X-Internal-Api-Key`.
@@ -481,7 +494,7 @@ docs/postman/EventHub.postman_collection.json
 ## Known Limitations
 
 - Payment is mock-only and does not integrate a real payment provider.
-- Email delivery is mock/log-only.
+- Notification email delivery is mock/log-only; Auth Service account emails require a configured Resend API key.
 - RabbitMQ retry and dead-letter queues are not configured yet.
 - The payment workflow is a simple Saga-style flow, not a complete distributed transaction implementation.
 - Some frontend analytics screens can use fallback demo data when analytics endpoints are unavailable.
