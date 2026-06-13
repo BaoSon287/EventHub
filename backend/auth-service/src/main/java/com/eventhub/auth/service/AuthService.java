@@ -19,6 +19,7 @@ import com.eventhub.auth.repository.PasswordResetTokenRepository;
 import com.eventhub.auth.security.JwtService;
 import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.common.exception.ForbiddenException;
+import com.eventhub.common.exception.ServiceUnavailableException;
 import com.eventhub.common.exception.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +85,12 @@ public class AuthService {
 
         createUserProfileIfPossible(user);
         String verificationToken = createVerificationToken(user);
-        emailService.sendVerificationEmail(user.getEmail(), verificationToken);
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), verificationToken);
+        } catch (Exception ex) {
+            log.error("Verification email could not be sent for userId={}. cause={}", user.getId(), ex.toString());
+            throw new ServiceUnavailableException("Verification email could not be sent. Please check SMTP configuration.");
+        }
         log.info("SECURITY_AUDIT action=REGISTER_SUCCESS userId={} role={}", user.getId(), user.getRole());
         return toAuthResponse(user);
     }
@@ -131,7 +137,12 @@ public class AuthService {
         String email = normalizeEmail(request.email());
         repository.findByEmail(email).ifPresent(user -> {
             String token = createPasswordResetToken(user);
-            emailService.sendPasswordResetEmail(user.getEmail(), token);
+            try {
+                emailService.sendPasswordResetEmail(user.getEmail(), token);
+            } catch (Exception ex) {
+                log.error("Password reset email could not be sent for userId={}. cause={}", user.getId(), ex.toString());
+                throw new ServiceUnavailableException("Password reset email could not be sent. Please check SMTP configuration.");
+            }
             log.info("SECURITY_AUDIT action=PASSWORD_RESET_REQUESTED userId={} role={}", user.getId(), user.getRole());
         });
     }

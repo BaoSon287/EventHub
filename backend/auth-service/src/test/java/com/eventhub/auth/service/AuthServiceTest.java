@@ -12,6 +12,7 @@ import com.eventhub.auth.security.JwtService;
 import com.eventhub.common.dto.ApiResponse;
 import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.common.exception.ForbiddenException;
+import com.eventhub.common.exception.ServiceUnavailableException;
 import com.eventhub.common.exception.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,6 +131,30 @@ class AuthServiceTest {
 
         assertThat(response.email()).isEqualTo("user@gmail.com");
         verify(emailService).sendVerificationEmail(eq("user@gmail.com"), any(String.class));
+    }
+
+    @Test
+    void registerFailsClearlyWhenVerificationEmailCannotBeSent() {
+        when(repository.existsByEmail("user@gmail.com")).thenReturn(false);
+        when(passwordEncoder.encode("123456")).thenReturn("bcrypt-hash");
+        when(repository.save(any(AuthUser.class))).thenAnswer(invocation -> {
+            AuthUser user = invocation.getArgument(0);
+            user.setId(10L);
+            return user;
+        });
+        when(emailVerificationTokenRepository.save(any(EmailVerificationToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userServiceClient.createProfile(any())).thenReturn(ApiResponse.success("ok", null));
+        doThrow(new IllegalStateException("smtp auth failed"))
+                .when(emailService).sendVerificationEmail(eq("user@gmail.com"), any(String.class));
+
+        assertThatThrownBy(() -> service.register(new RegisterRequest(
+                "user@gmail.com",
+                "123456",
+                "Nguyen Van A",
+                null,
+                null
+        ))).isInstanceOf(ServiceUnavailableException.class)
+                .hasMessageContaining("Verification email could not be sent");
     }
 
     @Test
