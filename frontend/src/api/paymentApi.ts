@@ -45,12 +45,16 @@ export const paymentApi = {
       bookingId: toNumberId(paymentData.bookingId),
       method: toBackendMethod(paymentData.paymentMethod)
     }));
+    const isSuccess = payment.status === 'SUCCESS';
+
     return {
       data: {
-        success: payment.status === 'SUCCESS',
-        message: 'Giao dịch thanh toán đã được tạo và đang chờ xử lý.',
+        success: isSuccess,
+        message: isSuccess
+          ? 'Demo payment completed. Demo accounts have unlimited balance.'
+          : 'Payment transaction was created and is waiting for processing.',
         transactionId: payment.paymentCode,
-        booking: { id: String(payment.bookingId), status: payment.status === 'SUCCESS' ? 'paid' : 'pending_payment' }
+        booking: { id: String(payment.bookingId), status: isSuccess ? 'paid' : 'pending_payment' }
       }
     };
   },

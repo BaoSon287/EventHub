@@ -73,6 +73,8 @@ class BookingServiceTest {
         assertThat(response.eventId()).isEqualTo(1L);
         assertThat(response.quantity()).isEqualTo(1);
         assertThat(response.status()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(response.ticketCode()).startsWith("EH-TK-");
+        assertThat(response.qrCodeContent()).isEqualTo("EVENTHUB_TICKET:" + response.ticketCode());
         InOrder inOrder = inOrder(eventServiceClient, repository, eventPublisher);
         inOrder.verify(eventServiceClient).reserveTickets(eq(1L), any(TicketQuantityRequest.class));
         inOrder.verify(repository).saveAndFlush(any(Booking.class));
@@ -187,6 +189,21 @@ class BookingServiceTest {
     }
 
     @Test
+    void cancellingBookingKeepsTicketCode() {
+        Booking booking = booking(BookingStatus.CONFIRMED);
+        booking.setTicketCode("EH-TK-20260615-A8K3QZ");
+        when(repository.findById(1L)).thenReturn(Optional.of(booking));
+        when(eventServiceClient.releaseTickets(eq(1L), any(TicketQuantityRequest.class))).thenReturn(success(event("PUBLISHED", 5)));
+        when(repository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.cancel(1L, user);
+
+        assertThat(response.ticketCode()).isEqualTo("EH-TK-20260615-A8K3QZ");
+        assertThat(response.qrCodeContent()).isEqualTo("EVENTHUB_TICKET:EH-TK-20260615-A8K3QZ");
+        assertThat(response.bookingStatus()).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
     void cancelledBookingDoesNotReleaseTwice() {
         when(repository.findById(1L)).thenReturn(Optional.of(booking(BookingStatus.CANCELLED)));
 
@@ -261,6 +278,7 @@ class BookingServiceTest {
                 .totalPrice(BigDecimal.valueOf(200000))
                 .status(status)
                 .paymentStatus(PaymentStatus.UNPAID)
+                .ticketCode("EH-TK-20260615-TEST01")
                 .build();
     }
 

@@ -4,14 +4,25 @@ import { Booking } from '../types/domain';
 
 type BackendBooking = {
   id: number;
+  bookingId?: number;
   bookingCode: string;
+  ticketCode?: string;
+  qrCodeContent?: string;
   userId: number;
   eventId: number;
   eventTitle: string;
+  eventImageUrl?: string;
+  eventStartTime?: string;
+  eventEndTime?: string;
+  eventLocation?: string;
+  eventAddress?: string;
+  eventCity?: string;
   quantity: number;
   totalPrice: number;
+  totalAmount?: number;
   paymentStatus: string;
   status: string;
+  bookingStatus?: string;
   createdAt: string;
 };
 
@@ -21,22 +32,31 @@ type BookingPage = {
 
 const toUiBooking = (booking: BackendBooking): Booking => ({
   id: String(booking.id),
+  bookingCode: booking.bookingCode || '',
+  ticketCode: booking.ticketCode || booking.bookingCode || '',
+  qrCodeContent: booking.qrCodeContent || (booking.ticketCode ? `EVENTHUB_TICKET:${booking.ticketCode}` : ''),
   eventId: String(booking.eventId),
   eventTitle: booking.eventTitle,
-  eventImage: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=1000',
-  eventDate: booking.createdAt?.slice(0, 10) || '',
-  eventLocation: '',
+  eventImage: booking.eventImageUrl || 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&q=80&w=1000',
+  eventDate: booking.eventStartTime?.slice(0, 10) || booking.createdAt?.slice(0, 10) || '',
+  eventStartTime: booking.eventStartTime,
+  eventEndTime: booking.eventEndTime,
+  eventLocation: booking.eventLocation || booking.eventCity || '',
+  eventAddress: booking.eventAddress,
+  eventCity: booking.eventCity,
   userId: String(booking.userId),
   userEmail: '',
   userName: '',
   quantity: booking.quantity,
-  totalPrice: Number(booking.totalPrice || 0),
+  totalPrice: Number(booking.totalAmount ?? booking.totalPrice ?? 0),
   ticketType: 'standard',
   status: booking.status === 'CANCELLED'
     ? 'cancelled'
     : booking.paymentStatus === 'PAID'
       ? 'paid'
       : 'pending_payment',
+  bookingStatus: booking.bookingStatus || booking.status,
+  paymentStatus: booking.paymentStatus,
   bookingDate: booking.createdAt || new Date().toISOString()
 });
 
@@ -67,6 +87,11 @@ export const bookingApi = {
 
   getById: async (id: string) => {
     const response = await axiosClient.get(`/api/bookings/${toNumberId(id)}`);
+    return { data: toUiBooking(unwrap<BackendBooking>(response)) };
+  },
+
+  getTicket: async (id: string) => {
+    const response = await axiosClient.get(`/api/bookings/${toNumberId(id)}/ticket`);
     return { data: toUiBooking(unwrap<BackendBooking>(response)) };
   },
 

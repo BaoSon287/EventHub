@@ -55,15 +55,20 @@ public class PaymentService {
         }
 
         PaymentMethod method = request.method() == null ? PaymentMethod.MOCK : request.method();
+        LocalDateTime paidAt = LocalDateTime.now();
         PaymentTransaction payment = repository.save(PaymentTransaction.builder()
                 .bookingId(booking.id())
                 .bookingCode(booking.bookingCode())
                 .userId(booking.userId())
                 .amount(booking.totalPrice())
                 .method(method)
-                .status(PaymentTransactionStatus.PENDING)
-                .provider(method.name())
+                .status(PaymentTransactionStatus.SUCCESS)
+                .provider("DEMO_INFINITE_FUNDS")
+                .providerTransactionId("DEMO-TXN-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase())
+                .paidAt(paidAt)
                 .build());
+        updateBookingPaymentStatus(payment, "PAID");
+        eventPublisher.publishPaymentSucceeded(payment, principal);
         return mapper.toResponse(payment);
     }
 

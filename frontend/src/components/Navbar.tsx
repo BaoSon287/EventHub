@@ -86,7 +86,7 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-4">
             {user ? (
               <div className="hidden items-center gap-3 md:flex">
-                <Link to="/my-bookings" title="Vé của tôi" className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
+                <Link to="/my-tickets" title="My Tickets" className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
                   <Ticket className="h-5 w-5" />
                 </Link>
                 <Link to="/notifications" title="Thông báo" className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
@@ -179,7 +179,7 @@ export const Navbar: React.FC = () => {
 
               {user ? (
                 <>
-                  <Link to="/my-bookings" onClick={closeMobileMenu} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
+                  <Link to="/my-tickets" onClick={closeMobileMenu} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
                     <Ticket className="h-4 w-4" /> My Tickets
                   </Link>
                   <Link to="/notifications" onClick={closeMobileMenu} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">

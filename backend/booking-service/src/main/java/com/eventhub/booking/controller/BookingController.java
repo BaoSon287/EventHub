@@ -47,6 +47,15 @@ public class BookingController {
         return ApiResponse.success("Get booking successfully", service.findById(id, principal));
     }
 
+    @Operation(summary = "Get ticket details for a booking")
+    @GetMapping("/{id}/ticket")
+    public ApiResponse<BookingResponse> findTicketById(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal CustomUserPrincipal principal
+    ) {
+        return ApiResponse.success("Get ticket successfully", service.findTicketById(id, principal));
+    }
+
     @Operation(summary = "Get current user's bookings")
     @GetMapping("/me")
     public ApiResponse<BookingPageResponse> findMine(

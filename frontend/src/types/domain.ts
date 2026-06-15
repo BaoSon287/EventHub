@@ -40,11 +40,18 @@ export interface Event {
 
 export interface Booking {
   id: string;
+  bookingCode: string;
+  ticketCode: string;
+  qrCodeContent: string;
   eventId: string;
   eventTitle: string;
   eventImage: string;
   eventDate: string;
+  eventStartTime?: string;
+  eventEndTime?: string;
   eventLocation: string;
+  eventAddress?: string;
+  eventCity?: string;
   userId: string;
   userEmail: string;
   userName: string;
@@ -52,6 +59,8 @@ export interface Booking {
   totalPrice: number;
   ticketType: 'standard' | 'vip';
   status: 'pending_payment' | 'paid' | 'cancelled';
+  bookingStatus: string;
+  paymentStatus: string;
   bookingDate: string;
 }
 

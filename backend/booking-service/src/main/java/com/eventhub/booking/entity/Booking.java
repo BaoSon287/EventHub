@@ -16,7 +16,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "bookings")
+@Table(
+        name = "bookings",
+        indexes = {
+                @Index(name = "idx_bookings_ticket_code", columnList = "ticket_code", unique = true)
+        }
+)
 public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +29,9 @@ public class Booking {
 
     @Column(nullable = false, unique = true, length = 32)
     private String bookingCode;
+
+    @Column(name = "ticket_code", nullable = false, unique = true, length = 40)
+    private String ticketCode;
 
     @Column(nullable = false)
     private Long userId;
@@ -33,6 +41,24 @@ public class Booking {
 
     @Column(nullable = false, length = 150)
     private String eventTitle;
+
+    @Column(name = "event_image_url", length = 1000)
+    private String eventImageUrl;
+
+    @Column(name = "event_start_time")
+    private LocalDateTime eventStartTime;
+
+    @Column(name = "event_end_time")
+    private LocalDateTime eventEndTime;
+
+    @Column(name = "event_location", length = 150)
+    private String eventLocation;
+
+    @Column(name = "event_address", length = 255)
+    private String eventAddress;
+
+    @Column(name = "event_city", length = 100)
+    private String eventCity;
 
     @Column(nullable = false)
     private Integer quantity;
@@ -62,6 +88,9 @@ public class Booking {
         if (bookingCode == null) {
             bookingCode = generateBookingCode(createdAt);
         }
+        if (ticketCode == null) {
+            ticketCode = generateTicketCode(createdAt);
+        }
         if (status == null) {
             status = BookingStatus.CONFIRMED;
         }
@@ -79,5 +108,11 @@ public class Booking {
         String date = time.format(DateTimeFormatter.BASIC_ISO_DATE);
         String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
         return "EH-" + date + "-" + suffix;
+    }
+
+    public static String generateTicketCode(LocalDateTime time) {
+        String date = time.format(DateTimeFormatter.BASIC_ISO_DATE);
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+        return "EH-TK-" + date + "-" + suffix;
     }
 }

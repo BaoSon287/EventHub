@@ -69,9 +69,16 @@ public class BookingService {
                     .userId(principal.userId())
                     .eventId(request.eventId())
                     .eventTitle(event.title())
+                    .eventImageUrl(event.imageUrl())
+                    .eventStartTime(event.startTime())
+                    .eventEndTime(event.endTime())
+                    .eventLocation(event.location())
+                    .eventAddress(event.address())
+                    .eventCity(event.city())
                     .quantity(request.quantity())
                     .ticketPrice(event.price())
                     .totalPrice(event.price().multiply(BigDecimal.valueOf(request.quantity())))
+                    .ticketCode(generateUniqueTicketCode())
                     .status(BookingStatus.CONFIRMED)
                     .paymentStatus(PaymentStatus.UNPAID)
                     .build());
@@ -84,6 +91,12 @@ public class BookingService {
     }
 
     public BookingResponse findById(Long id, CustomUserPrincipal principal) {
+        Booking booking = getBooking(id);
+        requireOwnerOrAdmin(booking, principal);
+        return mapper.toResponse(booking);
+    }
+
+    public BookingResponse findTicketById(Long id, CustomUserPrincipal principal) {
         Booking booking = getBooking(id);
         requireOwnerOrAdmin(booking, principal);
         return mapper.toResponse(booking);
@@ -267,6 +280,16 @@ public class BookingService {
 
     private Pageable pageable(int page, int size) {
         return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+    }
+
+    private String generateUniqueTicketCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String ticketCode = Booking.generateTicketCode(LocalDateTime.now());
+            if (!repository.existsByTicketCode(ticketCode)) {
+                return ticketCode;
+            }
+        }
+        throw new BadRequestException("TICKET_CODE_GENERATION_FAILED: Could not generate unique ticket code");
     }
 
     private BookingPageResponse toPageResponse(Page<Booking> page) {

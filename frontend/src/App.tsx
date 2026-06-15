@@ -61,6 +61,7 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailResultPage />} />
             <Route element={<ProtectedRoute />}>
+              <Route path="/my-tickets" element={<MyBookingsPage />} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
               <Route path="/payments/:bookingId" element={<PaymentPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />

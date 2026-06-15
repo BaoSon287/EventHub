@@ -15,4 +15,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> findByEventIdAndStatus(Long eventId, BookingStatus status, Pageable pageable);
     Optional<Booking> findByBookingCode(String bookingCode);
     boolean existsByBookingCode(String bookingCode);
+    Optional<Booking> findByTicketCode(String ticketCode);
+    boolean existsByTicketCode(String ticketCode);
 }
