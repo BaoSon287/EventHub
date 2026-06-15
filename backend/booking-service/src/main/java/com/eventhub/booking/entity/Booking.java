@@ -30,7 +30,7 @@ public class Booking {
     @Column(nullable = false, unique = true, length = 32)
     private String bookingCode;
 
-    @Column(name = "ticket_code", nullable = false, unique = true, length = 40)
+    @Column(name = "ticket_code", unique = true, length = 40)
     private String ticketCode;
 
     @Column(nullable = false)
