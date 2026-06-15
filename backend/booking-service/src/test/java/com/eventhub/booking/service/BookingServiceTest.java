@@ -218,6 +218,18 @@ class BookingServiceTest {
                 .hasMessageNotContaining("FeignException");
     }
 
+    @Test
+    void eventServiceJsonErrorMessageIsMappedToKnownCode() {
+        when(eventServiceClient.getInternalEvent(1L)).thenReturn(success(event("PUBLISHED", 5)));
+        when(eventServiceClient.reserveTickets(eq(1L), any(TicketQuantityRequest.class)))
+                .thenThrow(feignException(400, "EVENT_ALREADY_STARTED: Event has already started"));
+
+        assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 1), user))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("EVENT_ALREADY_STARTED")
+                .hasMessageNotContaining("EVENT_SERVICE_UNAVAILABLE");
+    }
+
     private EventApiResponse<InternalEventResponse> success(InternalEventResponse event) {
         return new EventApiResponse<>(true, "OK", event);
     }

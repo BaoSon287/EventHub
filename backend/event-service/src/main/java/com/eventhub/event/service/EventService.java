@@ -146,6 +146,7 @@ public class EventService {
         return toPageResponse(events);
     }
 
+    @Transactional
     public InternalEventResponse findInternalById(Long id) {
         completeExpiredPublishedEvents();
         return mapper.toInternalResponse(getEvent(id));

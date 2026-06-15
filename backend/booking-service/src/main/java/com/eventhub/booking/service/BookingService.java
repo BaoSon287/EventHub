@@ -19,6 +19,8 @@ import com.eventhub.booking.security.CustomUserPrincipal;
 import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.common.exception.ForbiddenException;
 import com.eventhub.common.exception.ResourceNotFoundException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,7 @@ import java.time.LocalDateTime;
 @Service
 public class BookingService {
     private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final BookingRepository repository;
     private final EventServiceClient eventServiceClient;
@@ -297,6 +300,7 @@ public class BookingService {
 
     private String normalizedEventServiceMessage(FeignException ex) {
         String message = ex.contentUTF8();
+        message = extractApiResponseMessage(message);
         if (message == null || message.isBlank()) {
             message = ex.getMessage();
         }
@@ -304,6 +308,22 @@ public class BookingService {
             message = "Event service request failed with status " + ex.status();
         }
         return message;
+    }
+
+    private String extractApiResponseMessage(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return responseBody;
+        }
+        try {
+            JsonNode root = OBJECT_MAPPER.readTree(responseBody);
+            JsonNode message = root.get("message");
+            if (message != null && message.isTextual() && !message.asText().isBlank()) {
+                return message.asText();
+            }
+        } catch (Exception ignored) {
+            return responseBody;
+        }
+        return responseBody;
     }
 
     private String extractKnownEventErrorCode(String message) {
