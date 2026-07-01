@@ -16,6 +16,8 @@ import com.eventhub.booking.mapper.BookingMapper;
 import com.eventhub.booking.messaging.BookingEventPublisher;
 import com.eventhub.booking.repository.BookingRepository;
 import com.eventhub.booking.security.CustomUserPrincipal;
+import com.eventhub.booking.exception.BookingException;
+import com.eventhub.booking.exception.InsufficientTicketsException;
 import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.common.exception.ForbiddenException;
 import com.eventhub.common.exception.ResourceNotFoundException;
@@ -61,16 +63,22 @@ public class BookingService {
 
     @Transactional
     public BookingResponse create(CreateBookingRequest request, CustomUserPrincipal principal) {
-        validateQuantity(request.quantity());
-        InternalEventResponse event = fetchEvent(request.eventId());
-        validateBookable(event, request.quantity());
-        reserveTickets(request.eventId(), request.quantity());
+        Long userId = principal.userId();
+        Long eventId = request.eventId();
+        int quantity = request.quantity();
+        
+        log.info("Creating booking for user={}, event={}, quantity={}", userId, eventId, quantity);
+        
+        validateQuantity(quantity);
+        InternalEventResponse event = fetchEvent(eventId);
+        validateBookable(event, quantity);
+        reserveTickets(eventId, quantity);
 
         Booking booking;
         try {
             booking = repository.saveAndFlush(Booking.builder()
-                    .userId(principal.userId())
-                    .eventId(request.eventId())
+                    .userId(userId)
+                    .eventId(eventId)
                     .eventTitle(event.title())
                     .eventImageUrl(event.imageUrl())
                     .eventStartTime(event.startTime())
@@ -78,16 +86,18 @@ public class BookingService {
                     .eventLocation(event.location())
                     .eventAddress(event.address())
                     .eventCity(event.city())
-                    .quantity(request.quantity())
+                    .quantity(quantity)
                     .ticketPrice(event.price())
-                    .totalPrice(event.price().multiply(BigDecimal.valueOf(request.quantity())))
+                    .totalPrice(event.price().multiply(BigDecimal.valueOf(quantity)))
                     .ticketCode(generateUniqueTicketCode())
                     .status(BookingStatus.CONFIRMED)
                     .paymentStatus(PaymentStatus.UNPAID)
                     .build());
+            log.info("Booking created successfully: bookingId={}, bookingCode={}", booking.getId(), booking.getBookingCode());
         } catch (RuntimeException ex) {
-            compensateReleaseAfterCreateFailure(request.eventId(), request.quantity(), ex);
-            throw ex;
+            log.error("Failed to create booking for user={}, event={}", userId, eventId, ex);
+            compensateReleaseAfterCreateFailure(eventId, quantity, ex);
+            throw new BookingException("Failed to create booking: " + ex.getMessage(), ex);
         }
         eventPublisher.publishBookingCreated(booking, principal);
         return mapper.toResponse(booking);
@@ -138,10 +148,13 @@ public class BookingService {
     public BookingResponse cancel(Long id, CustomUserPrincipal principal) {
         Booking booking = getBooking(id);
         requireOwnerOrAdmin(booking, principal);
+        
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new BadRequestException("Booking is already cancelled");
+            log.warn("Attempt to cancel already cancelled booking: bookingId={}, userId={}", id, principal.userId());
+            throw new BookingException("Booking is already cancelled");
         }
 
+        log.info("Cancelling booking: bookingId={}, userId={}", id, principal.userId());
         releaseTickets(booking.getEventId(), booking.getQuantity());
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(LocalDateTime.now());
@@ -150,6 +163,7 @@ public class BookingService {
         }
         Booking saved = repository.save(booking);
         eventPublisher.publishBookingCancelled(saved, principal);
+        log.info("Booking cancelled successfully: bookingId={}", id);
         return mapper.toResponse(saved);
     }
 
@@ -157,12 +171,17 @@ public class BookingService {
     public BookingResponse payMock(Long id, CustomUserPrincipal principal) {
         Booking booking = getBooking(id);
         requireOwnerOrAdmin(booking, principal);
+        
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new BadRequestException("Cancelled booking cannot be paid");
+            log.warn("Attempt to pay cancelled booking: bookingId={}, userId={}", id, principal.userId());
+            throw new BookingException("Cancelled booking cannot be paid");
         }
+        
+        log.info("Processing mock payment: bookingId={}, userId={}", id, principal.userId());
         booking.setPaymentStatus(PaymentStatus.PAID);
         Booking saved = repository.save(booking);
         ticketOwnershipService.createAssetAfterPurchase(saved);
+        log.info("Mock payment completed: bookingId={}", id);
         return mapper.toResponse(saved);
     }
 
@@ -177,16 +196,16 @@ public class BookingService {
         PaymentStatus current = booking.getPaymentStatus();
 
         if (booking.getStatus() == BookingStatus.CANCELLED && target == PaymentStatus.PAID) {
-            throw new BadRequestException("Cancelled booking cannot be marked as paid");
+            throw new BookingException("Cancelled booking cannot be marked as paid");
         }
         if (current == PaymentStatus.PAID && target == PaymentStatus.PAID) {
-            throw new BadRequestException("Booking is already paid");
+            throw new BookingException("Booking is already paid");
         }
         if (current == PaymentStatus.PAID && target == PaymentStatus.UNPAID) {
-            throw new BadRequestException("Paid booking cannot be reverted to unpaid");
+            throw new BookingException("Paid booking cannot be reverted to unpaid");
         }
         if (!isAllowedPaymentTransition(current, target)) {
-            throw new BadRequestException("Payment status transition is not allowed");
+            throw new BookingException("Payment status transition is not allowed");
         }
 
         booking.setPaymentStatus(target);
@@ -253,25 +272,25 @@ public class BookingService {
     private void validateBookable(InternalEventResponse event, int quantity) {
         validateQuantity(quantity);
         if ("CANCELLED".equals(event.status())) {
-            throw new BadRequestException("EVENT_CANCELLED: Cancelled events cannot be booked");
+            throw new BookingException("EVENT_CANCELLED: Cancelled events cannot be booked");
         }
         if ("COMPLETED".equals(event.status())) {
-            throw new BadRequestException("EVENT_COMPLETED: Completed events cannot be booked");
+            throw new BookingException("EVENT_COMPLETED: Completed events cannot be booked");
         }
         if (!"PUBLISHED".equals(event.status())) {
-            throw new BadRequestException("EVENT_NOT_BOOKABLE: Only published events can be booked");
+            throw new BookingException("EVENT_NOT_BOOKABLE: Only published events can be booked");
         }
         if (event.endTime() != null && !event.endTime().isAfter(LocalDateTime.now())) {
-            throw new BadRequestException("EVENT_COMPLETED: Completed events cannot be booked");
+            throw new BookingException("EVENT_COMPLETED: Completed events cannot be booked");
         }
         if (event.startTime() != null && !event.startTime().isAfter(LocalDateTime.now())) {
-            throw new BadRequestException("EVENT_ALREADY_STARTED: Event has already started");
+            throw new BookingException("EVENT_ALREADY_STARTED: Event has already started");
         }
         if (event.availableTickets() == null) {
-            throw new BadRequestException("EVENT_NOT_BOOKABLE: Event ticket inventory is invalid");
+            throw new BookingException("EVENT_NOT_BOOKABLE: Event ticket inventory is invalid");
         }
         if (event.availableTickets() < quantity) {
-            throw new BadRequestException("INSUFFICIENT_TICKETS: Not enough tickets available");
+            throw new InsufficientTicketsException("INSUFFICIENT_TICKETS: Not enough tickets available (requested=" + quantity + ", available=" + event.availableTickets() + ")");
         }
     }
 
@@ -298,7 +317,7 @@ public class BookingService {
                 return ticketCode;
             }
         }
-        throw new BadRequestException("TICKET_CODE_GENERATION_FAILED: Could not generate unique ticket code");
+        throw new BookingException("TICKET_CODE_GENERATION_FAILED: Could not generate unique ticket code");
     }
 
     private BookingPageResponse toPageResponse(Page<Booking> page) {
@@ -391,10 +410,12 @@ public class BookingService {
 
     private void compensateReleaseAfterCreateFailure(Long eventId, int quantity, RuntimeException originalException) {
         try {
+            log.warn("Compensating ticket release after booking creation failure: eventId={}, quantity={}", eventId, quantity);
             releaseTickets(eventId, quantity);
+            log.info("Ticket release compensation completed: eventId={}, quantity={}", eventId, quantity);
         } catch (RuntimeException releaseException) {
+            log.error("Failed to release reserved tickets after booking create failure, eventId={}, quantity={}", eventId, quantity, releaseException);
             originalException.addSuppressed(releaseException);
-            log.warn("Failed to release reserved tickets after booking create failure, eventId={}", eventId, releaseException);
         }
     }
 }

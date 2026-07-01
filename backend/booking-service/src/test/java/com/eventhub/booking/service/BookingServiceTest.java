@@ -12,6 +12,7 @@ import com.eventhub.booking.mapper.BookingMapper;
 import com.eventhub.booking.messaging.BookingEventPublisher;
 import com.eventhub.booking.repository.BookingRepository;
 import com.eventhub.booking.security.CustomUserPrincipal;
+import com.eventhub.booking.exception.BookingException;
 import com.eventhub.common.exception.BadRequestException;
 import feign.FeignException;
 import feign.Request;
@@ -89,7 +90,7 @@ class BookingServiceTest {
         when(eventServiceClient.getInternalEvent(1L)).thenReturn(success(event("DRAFT", 5)));
 
         assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 1), user))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(BookingException.class)
                 .hasMessageContaining("EVENT_NOT_BOOKABLE");
 
         verify(eventServiceClient, never()).reserveTickets(any(), any());
@@ -102,7 +103,7 @@ class BookingServiceTest {
         when(eventServiceClient.getInternalEvent(1L)).thenReturn(success(event("CANCELLED", 5)));
 
         assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 1), user))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(BookingException.class)
                 .hasMessageContaining("EVENT_CANCELLED");
     }
 
@@ -111,7 +112,7 @@ class BookingServiceTest {
         when(eventServiceClient.getInternalEvent(1L)).thenReturn(success(event("COMPLETED", 5)));
 
         assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 1), user))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(BookingException.class)
                 .hasMessageContaining("EVENT_COMPLETED");
     }
 
@@ -130,7 +131,7 @@ class BookingServiceTest {
         )));
 
         assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 1), user))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(BookingException.class)
                 .hasMessageContaining("EVENT_COMPLETED");
     }
 
@@ -139,7 +140,7 @@ class BookingServiceTest {
         when(eventServiceClient.getInternalEvent(1L)).thenReturn(success(event("PUBLISHED", 0)));
 
         assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 1), user))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(com.eventhub.booking.exception.InsufficientTicketsException.class)
                 .hasMessageContaining("INSUFFICIENT_TICKETS");
 
         verify(repository, never()).saveAndFlush(any());
@@ -167,7 +168,8 @@ class BookingServiceTest {
         when(repository.saveAndFlush(any(Booking.class))).thenThrow(new DataIntegrityViolationException("boom"));
 
         assertThatThrownBy(() -> service.create(new CreateBookingRequest(1L, 2), user))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(BookingException.class)
+                .hasMessageContaining("Failed to create booking");
 
         ArgumentCaptor<TicketQuantityRequest> releaseRequest = ArgumentCaptor.forClass(TicketQuantityRequest.class);
         verify(eventServiceClient).releaseTickets(eq(1L), releaseRequest.capture());
@@ -224,7 +226,7 @@ class BookingServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(booking(BookingStatus.CANCELLED)));
 
         assertThatThrownBy(() -> service.cancel(1L, user))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(BookingException.class)
                 .hasMessageContaining("already cancelled");
 
         verify(eventServiceClient, never()).releaseTickets(any(), any());
