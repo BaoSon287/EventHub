@@ -258,6 +258,8 @@ Main API groups:
 | Users | `GET /api/users/{id}`, `PUT /api/users/{id}`, avatar upload |
 | Events | `GET /api/events`, `POST /api/events`, `PUT /api/events/{id}`, `PATCH /api/events/{id}/publish`, `PATCH /api/events/{id}/cancel`, `DELETE /api/events/{id}` for drafts |
 | Bookings | `POST /api/bookings`, `GET /api/bookings/me`, cancel, mock pay |
+| Tickets | `GET /api/tickets/my`, `GET /api/tickets/{id}`, history, resale listing |
+| Resale Marketplace | active listings, listing detail, buy, cancel listing |
 | Payments | `POST /api/payments`, lookup, mock success, mock fail, cancel |
 | Notifications | list user notifications, get detail, mark as read |
 
@@ -349,6 +351,45 @@ curl -X PATCH http://localhost:8080/api/payments/1/mock-success \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
+List ticket assets owned by the current user:
+
+```bash
+curl http://localhost:8080/api/tickets/my \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Get one owned ticket asset by asset UUID or ticket/booking id:
+
+```bash
+curl http://localhost:8080/api/tickets/1 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Create a resale listing:
+
+```bash
+curl -X POST http://localhost:8080/api/tickets/1/resell \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{
+    "price": 500000
+  }'
+```
+
+List resale marketplace tickets:
+
+```bash
+curl "http://localhost:8080/api/resale-tickets?priceMin=100000&priceMax=1000000" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+Buy a resale listing:
+
+```bash
+curl -X POST http://localhost:8080/api/resale-tickets/LISTING_UUID/buy \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
 ## Swagger URLs
 
 - Auth Service: http://localhost:8081/swagger-ui/index.html
@@ -397,6 +438,41 @@ npm run lint
 npm run build
 ```
 
+## Frontend Ticket Wallet And Marketplace
+
+The React frontend includes a ticket asset wallet and resale marketplace built on the existing API Gateway client.
+
+Pages:
+
+| Page | Purpose |
+| --- | --- |
+| `/my-tickets` | Ticket wallet with owned assets, QR viewer, sell flow, and cancel listing action |
+| `/tickets/:id` | Ticket detail with event info, current QR, purchase price, status, and transfer history |
+| `/marketplace` | Active resale listings with event search, price filters, date filter, and buy action |
+| `/marketplace/:id` | Listing detail and purchase confirmation |
+
+Frontend API mapping:
+
+| Frontend action | Backend API |
+| --- | --- |
+| Load wallet | `GET /api/tickets/my` |
+| Ticket detail | `GET /api/tickets/{id}` |
+| Transfer history | `GET /api/tickets/{id}/history` |
+| Sell ticket | `POST /api/tickets/{ticketId}/resell` |
+| Cancel listing | `DELETE /api/resale-tickets/{listingId}` |
+| Marketplace list | `GET /api/resale-tickets` |
+| Listing detail | `GET /api/resale-tickets/{listingId}` |
+| Buy resale ticket | `POST /api/resale-tickets/{listingId}/buy` |
+
+User flow:
+
+1. User buys and pays for a ticket; the backend creates a `TicketAsset`.
+2. User opens `/my-tickets`, views owned tickets and QR codes.
+3. User lists an `OWNED` ticket for resale; wallet status changes to `LISTED_FOR_SALE`.
+4. Another user browses `/marketplace`, opens a listing, and confirms purchase.
+5. Backend transfers ownership and generates a new QR code.
+6. Buyer is redirected to `/my-tickets`; seller no longer sees the sold ticket in their wallet.
+
 ## Core Workflows
 
 Authentication:
@@ -424,8 +500,39 @@ Payment:
 2. Payment Service stores a `PENDING` transaction.
 3. User calls mock success or mock failure.
 4. Payment Service updates the transaction and Booking Service payment status.
-5. Payment Service publishes a payment event to RabbitMQ.
-6. Notification Service creates a user notification.
+5. When the booking payment status becomes `PAID`, Booking Service creates a `TicketAsset` for the buyer.
+6. Payment Service publishes a payment event to RabbitMQ.
+7. Notification Service creates a user notification.
+
+Ticket Asset Management:
+
+1. A paid booking is promoted into a digital ticket asset owned by the buyer.
+2. Booking Service stores the asset in `booking_db.ticket_assets`; this keeps ownership close to booking/ticket state and does not write to Event Service data.
+3. The asset has one current owner, an original buyer, event reference, ticket code, purchase price, status, and a QR code.
+4. QR content contains `ticket_asset_id`, `ticket_code`, and a non-sensitive QR nonce; it does not include user identity or payment details.
+5. Current status values are `OWNED`, `LISTED_FOR_SALE`, `SOLD`, `TRANSFERRED`, `USED`, and `CANCELLED`.
+6. Ticket APIs always read the user id from the JWT security context and never accept `owner_id` or `buyer_id` from request bodies.
+
+Ticket Resale Marketplace:
+
+1. The current ticket owner can list an `OWNED` ticket for resale before the event starts.
+2. Listing creates an `ACTIVE` row in `ticket_resale_listings`, changes the asset to `LISTED_FOR_SALE`, and records transfer history action `LISTED`.
+3. Buyers browse `ACTIVE` listings through `/api/resale-tickets`; marketplace responses do not expose QR code, ticket code, or ownership internals.
+4. Buying uses a transaction with pessimistic row locks on the listing and ticket asset. Only one buyer can turn an `ACTIVE` listing into `SOLD`.
+5. Purchase transfers `owner_id` to the buyer, returns the asset to `OWNED`, generates a new QR code, and records transfer history action `PURCHASED`.
+6. The old QR code is no longer the current QR stored on the asset; future QR validation should compare against the current asset QR.
+
+Ticket Asset and Resale database migrations:
+
+```bash
+psql "postgresql://eventhub:eventhub@localhost:5432/booking_db" \
+  -f scripts/database/20260701_ticket_assets.sql
+
+psql "postgresql://eventhub:eventhub@localhost:5432/booking_db" \
+  -f scripts/database/20260702_ticket_resale_marketplace.sql
+```
+
+The project still runs Hibernate `ddl-auto=update` for local development, but the SQL migration is kept so existing databases can be upgraded explicitly.
 
 ## RabbitMQ Integration Events
 
@@ -494,6 +601,9 @@ docs/postman/EventHub.postman_collection.json
 ## Known Limitations
 
 - Payment is mock-only and does not integrate a real payment provider.
+- Ticket Asset Management currently creates one asset for the existing booking-level ticket model. Per-seat or per-ticket-line assets can be added after the booking domain is split into individual ticket items.
+- Resale payment settlement is not integrated with a real payment provider yet; the backend ownership transfer is implemented as the marketplace domain step.
+- Phase 3 should add escrow/reconciliation, QR check-in validation endpoints, richer seller identity, anti-fraud/rate-limit checks, and full audit dashboards.
 - Notification email delivery is mock/log-only; Auth Service account emails require a configured SendGrid API key.
 - RabbitMQ retry and dead-letter queues are not configured yet.
 - The payment workflow is a simple Saga-style flow, not a complete distributed transaction implementation.

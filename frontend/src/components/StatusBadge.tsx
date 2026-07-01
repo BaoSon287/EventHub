@@ -9,13 +9,14 @@ type KnownBadgeStatus =
   | 'unpaid' | 'failed' | 'refunded'
   | 'draft' | 'published'
   | 'sent' | 'read';
+type TicketBadgeStatus = 'owned' | 'listed_for_sale' | 'sold' | 'transferred' | 'used';
 
 interface StatusBadgeProps {
   status: string;
   id?: string;
 }
 
-const styles: Record<KnownBadgeStatus, { bg: string; label: string }> = {
+const styles: Record<KnownBadgeStatus | TicketBadgeStatus, { bg: string; label: string }> = {
   upcoming: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Sắp diễn ra' },
   ongoing: { bg: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Đang diễn ra' },
   completed: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Đã kết thúc' },
@@ -37,6 +38,11 @@ const styles: Record<KnownBadgeStatus, { bg: string; label: string }> = {
   published: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Đã công khai' },
   sent: { bg: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'Sent' },
   read: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Read' },
+  owned: { bg: 'bg-emerald-50 border-emerald-200 text-emerald-700', label: 'Owned' },
+  listed_for_sale: { bg: 'bg-indigo-50 border-indigo-200 text-indigo-700', label: 'Listed for sale' },
+  sold: { bg: 'bg-slate-50 border-slate-200 text-slate-600', label: 'Sold' },
+  transferred: { bg: 'bg-blue-50 border-blue-200 text-blue-700', label: 'Transferred' },
+  used: { bg: 'bg-amber-50 border-amber-200 text-amber-700', label: 'Used' },
 };
 
 const humanize = (value: string) => (

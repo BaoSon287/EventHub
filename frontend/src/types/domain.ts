@@ -73,3 +73,51 @@ export interface Notification {
   read: boolean;
   createdAt: string;
 }
+
+export type TicketAssetStatus =
+  | 'OWNED'
+  | 'LISTED_FOR_SALE'
+  | 'SOLD'
+  | 'TRANSFERRED'
+  | 'USED'
+  | 'CANCELLED';
+
+export interface TicketAsset {
+  id: string;
+  ticketId: string;
+  eventId: string;
+  eventName: string;
+  eventImage: string;
+  eventDate?: string;
+  eventLocation?: string;
+  ticketType: 'standard' | 'vip';
+  status: TicketAssetStatus;
+  qrCode?: string;
+  purchasePrice: number;
+  activeListingId?: string;
+}
+
+export interface ResaleTicket {
+  listingId: string;
+  eventName: string;
+  eventDate?: string;
+  location?: string;
+  price: number;
+  sellerName: string;
+}
+
+export interface ResaleTicketDetail extends ResaleTicket {
+  eventId?: string;
+  seat?: string;
+  status?: string;
+  eventImage?: string;
+}
+
+export interface TicketTransferHistory {
+  id: string;
+  ticketAssetId: string;
+  fromUserId?: string;
+  toUserId?: string;
+  action: 'LISTED' | 'PURCHASED' | 'TRANSFERRED' | 'CANCELLED';
+  createdAt?: string;
+}

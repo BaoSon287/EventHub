@@ -1,131 +1,138 @@
 # EventHub Run Guide
 
-## Requirements
+## Yêu cầu cho MacBook Pro M1
 
 - Java 17
 - Maven
 - Node.js 22
-- Docker Desktop with WSL 2 backend
+- Docker Desktop for Mac
+- Terminal zsh (mặc định trên macOS)
+- PowerShell 7 nếu muốn chạy script smoke test (tùy chọn)
 
-## Run With Docker Compose
+> Trên Mac M1, không cần dùng WSL. Docker Desktop chạy trực tiếp trên macOS và nên dùng bản mới nhất.
 
-From the project root:
+## Chạy toàn bộ hệ thống bằng Docker Compose
 
-```powershell
-cd D:\EventHub
+Từ thư mục gốc của project:
+
+```bash
+cd /Users/your-name/Documents/GitHub/EventHub
 mvn clean package -DskipTests
 docker compose up --build
 ```
 
-Open:
+Mở các địa chỉ sau sau khi container khởi động:
 
 - Frontend: http://localhost:3000
 - API Gateway: http://localhost:8080
 - Eureka: http://localhost:8761
 - RabbitMQ UI: http://localhost:15672
 
-RabbitMQ login:
+Thông tin đăng nhập RabbitMQ:
 
 ```text
 eventhub / eventhub
 ```
 
-After the first successful build, use this faster command when source images do not need rebuilding:
+Sau lần build đầu tiên, nếu không cần rebuild image thì dùng lệnh nhanh hơn:
 
-```powershell
+```bash
 docker compose up
 ```
 
-## Run Frontend Only
+## Chạy frontend riêng lẻ
 
-Use this when backend services are already running locally or through Docker Compose:
+Dùng khi backend đã chạy sẵn bằng Docker Compose hoặc local:
 
-```powershell
-cd D:\EventHub\frontend
+```bash
+cd /Users/your-name/Documents/GitHub/EventHub/frontend
 npm install
 npm run dev
 ```
 
-Open:
+Mở:
 
 ```text
 http://localhost:5173
 ```
 
-The frontend uses the real API only. Set `VITE_API_BASE_URL` if the API Gateway is not running on `http://localhost:8080`.
+Frontend sẽ gọi API thật. Nếu API Gateway không chạy trên http://localhost:8080, hãy đặt biến môi trường sau trước khi chạy:
 
-## Smoke Test
-
-After the Docker stack is running:
-
-```powershell
-cd D:\EventHub
-.\scripts\smoke-test.ps1
+```bash
+export VITE_API_BASE_URL=http://localhost:8080
 ```
 
-Expected result: Eureka and all backend health endpoints return `OK`.
+## Smoke test
 
-## Restart Docker After WSL Shutdown
+Sau khi stack Docker đã chạy:
 
-If Docker was reset with:
-
-```powershell
-wsl --shutdown
+```bash
+cd /Users/your-name/Documents/GitHub/EventHub
+pwsh -File ./scripts/smoke-test.ps1
 ```
 
-Then:
+Nếu chưa cài PowerShell 7 trên Mac:
 
-1. Open Docker Desktop.
-2. Wait until Docker shows `Engine running`.
-3. Run:
-
-```powershell
-cd D:\EventHub
-docker compose up
+```bash
+brew install --cask powershell
 ```
 
-Use `docker compose up --build` only when you need to rebuild images.
+Kết quả mong đợi: Eureka và các health endpoint backend trả về `OK`.
 
-## Useful Commands
+## Lưu ý riêng cho Mac M1
 
-Stop containers:
+- Nếu Docker báo lỗi về kiến trúc hoặc image không chạy được, thử rebuild theo ARM64:
 
-```powershell
+```bash
+docker compose build --platform linux/arm64
+```
+
+- Nếu container cũ bị lỗi, thường nên xóa stack cũ trước khi chạy lại:
+
+```bash
 docker compose down
 ```
 
-View running services:
+## Các lệnh hữu ích
 
-```powershell
+Dừng container:
+
+```bash
+docker compose down
+```
+
+Xem container đang chạy:
+
+```bash
 docker compose ps
 ```
 
-Follow logs:
+Xem log:
 
-```powershell
+```bash
 docker compose logs -f
 ```
 
-Rebuild frontend checks locally:
+Kiểm tra frontend local:
 
-```powershell
-cd D:\EventHub\frontend
+```bash
+cd /Users/your-name/Documents/GitHub/EventHub/frontend
 npm run lint
 npm run build
 ```
 
-Build backend locally:
+Build backend local:
 
-```powershell
-cd D:\EventHub
+```bash
+cd /Users/your-name/Documents/GitHub/EventHub
 mvn clean package -DskipTests
 ```
 
 ## CI/CD
 
-GitHub Actions runs backend and frontend checks on push or pull request to `main`.
+GitHub Actions sẽ chạy kiểm tra backend và frontend khi push hoặc tạo pull request vào nhánh `main`.
 
-See:
+Xem thêm:
 
 ```text
 docs/ci-cd.md

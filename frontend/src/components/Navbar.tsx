@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Home, LayoutDashboard, LogOut, Menu, PlusCircle, Shield, Ticket, User as UserIcon, X } from 'lucide-react';
+import { Bell, Home, LayoutDashboard, LogOut, Menu, PlusCircle, Shield, ShoppingBag, Ticket, User as UserIcon, X } from 'lucide-react';
 import { authApi } from '../api/authApi';
 import { notificationApi } from '../api/notificationApi';
 import { Notification, User } from '../types/domain';
@@ -80,6 +80,14 @@ export const Navbar: React.FC = () => {
               >
                 Khám phá sự kiện
               </Link>
+              <Link
+                to="/marketplace"
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  location.pathname.startsWith('/marketplace') ? 'text-indigo-600' : 'text-slate-600 hover:text-indigo-600'
+                }`}
+              >
+                Marketplace
+              </Link>
             </div>
           </div>
 
@@ -88,6 +96,9 @@ export const Navbar: React.FC = () => {
               <div className="hidden items-center gap-3 md:flex">
                 <Link to="/my-tickets" title="My Tickets" className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
                   <Ticket className="h-5 w-5" />
+                </Link>
+                <Link to="/marketplace" title="Marketplace" className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
+                  <ShoppingBag className="h-5 w-5" />
                 </Link>
                 <Link to="/notifications" title="Thông báo" className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
                   <Bell className="h-5 w-5" />
@@ -175,6 +186,9 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link to="/events" onClick={closeMobileMenu} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold ${location.pathname === '/events' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
                 <Ticket className="h-4 w-4" /> Events
+              </Link>
+              <Link to="/marketplace" onClick={closeMobileMenu} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold ${location.pathname.startsWith('/marketplace') ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <ShoppingBag className="h-4 w-4" /> Marketplace
               </Link>
 
               {user ? (

@@ -91,7 +91,7 @@ public class RabbitMQConfig {
                 "payment.succeeded.event", PaymentSucceededEvent.class,
                 "payment.failed.event", PaymentFailedEvent.class
         ));
-        classMapper.setTrustedPackages("com.eventhub.notification.dto");
+        classMapper.setTrustedPackages("com.eventhub.notification.dto", "com.eventhub.booking.messaging");
         converter.setClassMapper(classMapper);
         return converter;
     }

@@ -63,6 +63,24 @@ Event statuses are `DRAFT`, `PUBLISHED`, `CANCELLED`, and `COMPLETED`. `POST /ap
 
 Booking Service reads `userId`, `email`, and `role` from JWT. It never accepts `ticketPrice` or `totalPrice` from the frontend. Booking creation succeeds only after Event Service reserves tickets for a `PUBLISHED` event that is still bookable.
 
+## Ticket Asset APIs
+
+- `GET /api/tickets/my` returns ticket assets owned by the current JWT user
+- `GET /api/tickets/{id}` returns one ticket asset by asset UUID or ticket/booking id
+- `GET /api/tickets/{id}/history` returns transfer history for the current owner or a participant in the transfer history
+- `POST /api/tickets/{ticketId}/resell` creates an active resale listing for an owned ticket
+
+Ticket asset APIs are served by Booking Service. The current user must be the asset owner or the request returns `403 Forbidden`. APIs never accept `owner_id` or `buyer_id` from request bodies.
+
+## Resale Marketplace APIs
+
+- `GET /api/resale-tickets` returns active resale listings and accepts `eventId`, `priceMin`, `priceMax`, `minPrice`, `maxPrice`, and `date`
+- `GET /api/resale-tickets/{listingId}` returns listing detail without QR, ticket code, or ownership internals
+- `POST /api/resale-tickets/{listingId}/buy` purchases an active listing and transfers ticket ownership to the current JWT user
+- `DELETE /api/resale-tickets/{listingId}` cancels an active listing for the seller
+
+Buying uses database transactions and pessimistic row locks on listing and ticket asset rows. The API rejects buying your own listing, sold listings, used/cancelled tickets, and tickets whose event has already started.
+
 ## Payment Service
 
 - `GET /api/payments/health`

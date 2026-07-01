@@ -1,32 +1,36 @@
 package com.eventhub.common.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class ApiResponse<T> {
     private boolean success;
     private String message;
     private T data;
 
+    public ApiResponse() {
+    }
+
+    public ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
     public static <T> ApiResponse<T> success(String message, T data) {
-        return ApiResponse.<T>builder()
-                .success(true)
-                .message(message)
-                .data(data)
-                .build();
+        return new ApiResponse<>(true, message, data);
     }
 
     public static <T> ApiResponse<T> error(String message, T data) {
-        return ApiResponse.<T>builder()
-                .success(false)
-                .message(message)
-                .data(data)
-                .build();
+        return new ApiResponse<>(false, message, data);
     }
 }

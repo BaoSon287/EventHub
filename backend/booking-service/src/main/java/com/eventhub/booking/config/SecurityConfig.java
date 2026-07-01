@@ -28,6 +28,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/bookings/health").permitAll()
                         .requestMatchers("/api/bookings/internal/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/tickets/**").authenticated()
+                        .requestMatchers("/api/resale-tickets/**").authenticated()
                         .requestMatchers("/api/bookings/**").authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

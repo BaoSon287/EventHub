@@ -64,9 +64,16 @@ Event Service currently uses Hibernate `ddl-auto=update`. The event status upgra
 
 - `id`
 - `bookingCode`
+- `ticketCode`
 - `userId`
 - `eventId`
 - `eventTitle`
+- `eventImageUrl`
+- `eventStartTime`
+- `eventEndTime`
+- `eventLocation`
+- `eventAddress`
+- `eventCity`
 - `quantity`
 - `ticketPrice`
 - `totalPrice`
@@ -75,6 +82,48 @@ Event Service currently uses Hibernate `ddl-auto=update`. The event status upgra
 - `createdAt`
 - `updatedAt`
 - `cancelledAt`
+
+## TicketAsset
+
+- `id`
+- `ticketId`
+- `eventId`
+- `ownerId`
+- `originalBuyerId`
+- `ticketCode`
+- `qrCode`
+- `status` as string enum: `OWNED`, `LISTED_FOR_SALE`, `SOLD`, `TRANSFERRED`, `USED`, `CANCELLED`
+- `purchasePrice`
+- `eventName`
+- `createdAt`
+- `updatedAt`
+
+Ticket assets live in `booking_db.ticket_assets` and are created by Booking Service after payment success. The migration for existing databases is kept in `scripts/database/20260701_ticket_assets.sql`.
+
+## TicketResaleListing
+
+- `id`
+- `ticketAssetId`
+- `sellerId`
+- `price`
+- `status` as string enum: `ACTIVE`, `SOLD`, `CANCELLED`
+- `createdAt`
+- `updatedAt`
+
+Only one `ACTIVE` listing is allowed for a ticket asset. The migration uses a partial unique index on `ticket_asset_id` where `status = 'ACTIVE'`.
+
+## TicketTransferHistory
+
+- `id`
+- `ticketAssetId`
+- `fromUserId`
+- `toUserId`
+- `action` as string enum: `LISTED`, `PURCHASED`, `TRANSFERRED`, `CANCELLED`
+- `oldQrCode`
+- `newQrCode`
+- `createdAt`
+
+Resale tables live in `booking_db` and are created by `scripts/database/20260702_ticket_resale_marketplace.sql`.
 
 ## Notification
 
@@ -115,7 +164,11 @@ Event Service currently uses Hibernate `ddl-auto=update`. The event status upgra
 - A registered auth user can own one user profile.
 - A user can organize many events through `Event.organizerId`.
 - A user can make many bookings through `Booking.userId`.
+- A user can own many ticket assets through `TicketAsset.ownerId`.
 - An event can have many bookings through `Booking.eventId`; this is a cross-service ID reference, not a database foreign key.
+- An event can have many ticket assets through `TicketAsset.eventId`; this is also a cross-service ID reference.
+- A ticket asset can have many resale listings over time, but only one `ACTIVE` listing.
+- A ticket asset can have many transfer history rows for listing, purchase, transfer, and cancellation events.
 - A user can have many notifications through `Notification.userId`.
 - A user can have many payment transactions through `PaymentTransaction.userId`.
 - A booking can have payment transactions through `PaymentTransaction.bookingId`, while Booking Service remains the owner of booking data.

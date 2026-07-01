@@ -48,7 +48,7 @@ spring:
         - id: booking-service
           uri: ${BOOKING_SERVICE_URL}
           predicates:
-            - Path=/api/bookings/**
+            - Path=/api/bookings/**,/api/tickets/**,/api/resale-tickets/**
 
         - id: notification-service
           uri: ${NOTIFICATION_SERVICE_URL}

@@ -43,17 +43,20 @@ public class BookingService {
     private final EventServiceClient eventServiceClient;
     private final BookingMapper mapper;
     private final BookingEventPublisher eventPublisher;
+    private final TicketOwnershipService ticketOwnershipService;
 
     public BookingService(
             BookingRepository repository,
             EventServiceClient eventServiceClient,
             BookingMapper mapper,
-            BookingEventPublisher eventPublisher
+            BookingEventPublisher eventPublisher,
+            TicketOwnershipService ticketOwnershipService
     ) {
         this.repository = repository;
         this.eventServiceClient = eventServiceClient;
         this.mapper = mapper;
         this.eventPublisher = eventPublisher;
+        this.ticketOwnershipService = ticketOwnershipService;
     }
 
     @Transactional
@@ -158,7 +161,9 @@ public class BookingService {
             throw new BadRequestException("Cancelled booking cannot be paid");
         }
         booking.setPaymentStatus(PaymentStatus.PAID);
-        return mapper.toResponse(repository.save(booking));
+        Booking saved = repository.save(booking);
+        ticketOwnershipService.createAssetAfterPurchase(saved);
+        return mapper.toResponse(saved);
     }
 
     public InternalBookingResponse findInternalBooking(Long id) {
@@ -185,7 +190,11 @@ public class BookingService {
         }
 
         booking.setPaymentStatus(target);
-        return toInternalResponse(repository.save(booking));
+        Booking saved = repository.save(booking);
+        if (target == PaymentStatus.PAID) {
+            ticketOwnershipService.createAssetAfterPurchase(saved);
+        }
+        return toInternalResponse(saved);
     }
 
     private Booking getBooking(Long id) {

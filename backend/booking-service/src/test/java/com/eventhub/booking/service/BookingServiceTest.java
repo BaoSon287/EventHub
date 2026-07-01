@@ -52,6 +52,9 @@ class BookingServiceTest {
     @Mock
     private BookingEventPublisher eventPublisher;
 
+    @Mock
+    private TicketOwnershipService ticketOwnershipService;
+
     private final BookingMapper mapper = new BookingMapper();
     private final CustomUserPrincipal user = new CustomUserPrincipal(10L, "user@example.com", "USER");
     private final CustomUserPrincipal otherUser = new CustomUserPrincipal(20L, "other@example.com", "USER");
@@ -59,7 +62,7 @@ class BookingServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new BookingService(repository, eventServiceClient, mapper, eventPublisher);
+        service = new BookingService(repository, eventServiceClient, mapper, eventPublisher, ticketOwnershipService);
     }
 
     @Test
@@ -201,6 +204,19 @@ class BookingServiceTest {
         assertThat(response.ticketCode()).isEqualTo("EH-TK-20260615-A8K3QZ");
         assertThat(response.qrCodeContent()).isEqualTo("EVENTHUB_TICKET:EH-TK-20260615-A8K3QZ");
         assertThat(response.bookingStatus()).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
+    void paymentSuccessCreatesTicketAsset() {
+        Booking booking = booking(BookingStatus.CONFIRMED);
+        booking.setPaymentStatus(PaymentStatus.UNPAID);
+        when(repository.findById(1L)).thenReturn(Optional.of(booking));
+        when(repository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.updatePaymentStatus(1L, new com.eventhub.booking.dto.UpdateBookingPaymentStatusRequest(PaymentStatus.PAID, "PAY-TEST"));
+
+        assertThat(booking.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        verify(ticketOwnershipService).createAssetAfterPurchase(booking);
     }
 
     @Test

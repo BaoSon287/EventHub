@@ -15,6 +15,10 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { VerifyEmailResultPage } from './pages/VerifyEmailResultPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
+import { MyTicketsPage } from './pages/MyTicketsPage';
+import { TicketDetailPage } from './pages/TicketDetailPage';
+import { MarketplacePage } from './pages/MarketplacePage';
+import { MarketplaceDetailPage } from './pages/MarketplaceDetailPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { OrganizerDashboardPage } from './pages/OrganizerDashboardPage';
@@ -61,7 +65,10 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailResultPage />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/my-tickets" element={<MyBookingsPage />} />
+              <Route path="/my-tickets" element={<MyTicketsPage />} />
+              <Route path="/tickets/:id" element={<TicketDetailPage />} />
+              <Route path="/marketplace" element={<MarketplacePage />} />
+              <Route path="/marketplace/:id" element={<MarketplaceDetailPage />} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
               <Route path="/payments/:bookingId" element={<PaymentPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
