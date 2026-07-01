@@ -19,8 +19,10 @@ import com.eventhub.auth.repository.PasswordResetTokenRepository;
 import com.eventhub.auth.security.JwtService;
 import com.eventhub.common.exception.BadRequestException;
 import com.eventhub.common.exception.ForbiddenException;
+import com.eventhub.common.exception.ResourceNotFoundException;
 import com.eventhub.common.exception.ServiceUnavailableException;
 import com.eventhub.common.exception.UnauthorizedException;
+import com.eventhub.auth.service.RefreshTokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +46,7 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final UserServiceClient userServiceClient;
     private final EmailService emailService;
 
@@ -53,6 +56,7 @@ public class AuthService {
             PasswordResetTokenRepository passwordResetTokenRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
+            RefreshTokenService refreshTokenService,
             UserServiceClient userServiceClient,
             EmailService emailService
     ) {
@@ -61,6 +65,7 @@ public class AuthService {
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
         this.userServiceClient = userServiceClient;
         this.emailService = emailService;
     }
@@ -111,7 +116,11 @@ public class AuthService {
             throw new ForbiddenException("Please verify your email before logging in.");
         }
         log.info("SECURITY_AUDIT action=LOGIN_SUCCESS userId={} role={}", user.getId(), user.getRole());
-        return new LoginResponse(jwtService.generateToken(user), toAuthResponse(user));
+        
+        String accessToken = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.createRefreshToken(user.getId());
+        
+        return new LoginResponse(accessToken, refreshToken, toAuthResponse(user));
     }
 
     @Transactional
@@ -176,6 +185,18 @@ public class AuthService {
         AuthUser user = repository.findByEmail(email)
                 .orElseThrow(() -> new UnauthorizedException("Current user not found"));
         return new CurrentUserResponse(user.getId(), user.getEmail(), user.getFullName(), user.getPhone(), user.getRole());
+    }
+
+    public AuthResponse getCurrentUserById(Long userId) {
+        AuthUser user = repository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return toAuthResponse(user);
+    }
+
+    public String generateTokenForUser(Long userId) {
+        AuthUser user = repository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return jwtService.generateToken(user);
     }
 
     private void createUserProfileIfPossible(AuthUser user) {
