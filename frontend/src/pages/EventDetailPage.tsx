@@ -67,7 +67,7 @@ export const EventDetailPage: React.FC = () => {
   const unitPrice = Math.round(event.price * priceFactor);
   const totalPrice = unitPrice * quantity;
   const availableTickets = Math.max(0, event.capacity - event.booked);
-  const maxQuantity = Math.max(1, Math.min(10, availableTickets));
+  const maxQuantity = Math.max(1, availableTickets); // Removed 10-ticket limit for demo purposes
   const isSoldOut = availableTickets <= 0;
   const now = Date.now();
   const startAt = event.startTime ? new Date(event.startTime).getTime() : Number.NaN;
