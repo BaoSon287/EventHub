@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:payment_test_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    open-in-view: false
+
+eventhub:
+  jwt:
+    secret: test-secret-key-for-jwt-signing
+    expiration-ms: 3600000
+
+logging:
+  level:
+    com.eventhub: WARN
+    org.hibernate.SQL: WARN
+    org.springframework.web: WARN
