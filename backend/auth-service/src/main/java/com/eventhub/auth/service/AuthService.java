@@ -22,7 +22,6 @@ import com.eventhub.common.exception.ForbiddenException;
 import com.eventhub.common.exception.ResourceNotFoundException;
 import com.eventhub.common.exception.ServiceUnavailableException;
 import com.eventhub.common.exception.UnauthorizedException;
-import com.eventhub.auth.service.RefreshTokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;

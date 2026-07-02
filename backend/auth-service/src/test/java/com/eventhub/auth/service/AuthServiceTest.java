@@ -34,6 +34,7 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
     private UserServiceClient userServiceClient;
+    private RefreshTokenService refreshTokenService;
     private EmailService emailService;
     private AuthService service;
 
@@ -44,6 +45,7 @@ class AuthServiceTest {
         passwordResetTokenRepository = mock(PasswordResetTokenRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
+        refreshTokenService = mock(RefreshTokenService.class);
         userServiceClient = mock(UserServiceClient.class);
         emailService = mock(EmailService.class);
         service = new AuthService(
@@ -52,6 +54,7 @@ class AuthServiceTest {
                 passwordResetTokenRepository,
                 passwordEncoder,
                 jwtService,
+                refreshTokenService,
                 userServiceClient,
                 emailService
         );
@@ -180,11 +183,9 @@ class AuthServiceTest {
         when(passwordEncoder.matches("123456", "bcrypt-hash")).thenReturn(true);
         when(jwtService.generateToken(user)).thenReturn("jwt-token");
 
-        LoginResponse response = service.login(new LoginRequest(" User@Gmail.com ", "123456"));
+        LoginResponse response = service.login(new LoginRequest(" User@Gmail.com ", "123456", null));
 
-        assertThat(response.token()).isEqualTo("jwt-token");
         assertThat(response.accessToken()).isEqualTo("jwt-token");
-        assertThat(response.tokenType()).isEqualTo("Bearer");
         assertThat(response.user().email()).isEqualTo("user@gmail.com");
     }
 
@@ -196,7 +197,7 @@ class AuthServiceTest {
         when(repository.findByEmail("user@gmail.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("123456", "bcrypt-hash")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("user@gmail.com", "123456")))
+        assertThatThrownBy(() -> service.login(new LoginRequest("user@gmail.com", "123456", null)))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Please verify your email");
 
@@ -209,7 +210,7 @@ class AuthServiceTest {
         when(repository.findByEmail("user@gmail.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "bcrypt-hash")).thenReturn(false);
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("user@gmail.com", "wrong")))
+        assertThatThrownBy(() -> service.login(new LoginRequest("user@gmail.com", "wrong", null)))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessageContaining("Invalid email or password");
 

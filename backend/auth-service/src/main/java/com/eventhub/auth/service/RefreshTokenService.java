@@ -3,7 +3,6 @@ package com.eventhub.auth.service;
 import com.eventhub.auth.entity.RefreshToken;
 import com.eventhub.auth.repository.RefreshTokenRepository;
 import com.eventhub.common.exception.BadRequestException;
-import com.eventhub.common.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

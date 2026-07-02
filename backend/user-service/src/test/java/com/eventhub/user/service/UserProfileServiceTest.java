@@ -66,7 +66,7 @@ class UserProfileServiceTest {
             return p;
         });
 
-        var request = new com.eventhub.user.dto.CreateUserProfileRequest(10L, "new@example.com", "New User", null, null);
+        var request = new com.eventhub.user.dto.CreateUserProfileRequest(10L, "new@example.com", "New User", null);
         UserProfile created = service.create(request);
 
         assertThat(created.getId()).isEqualTo(2L);
@@ -79,7 +79,7 @@ class UserProfileServiceTest {
     void createDuplicateAuthUserId() {
         when(repository.existsByAuthUserId(10L)).thenReturn(true);
 
-        var request = new com.eventhub.user.dto.CreateUserProfileRequest(10L, "new@example.com", "New User", null, null);
+        var request = new com.eventhub.user.dto.CreateUserProfileRequest(10L, "new@example.com", "New User", null);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(BadRequestException.class)
@@ -92,7 +92,7 @@ class UserProfileServiceTest {
         when(repository.existsByAuthUserId(10L)).thenReturn(false);
         when(repository.existsByEmail("new@example.com")).thenReturn(true);
 
-        var request = new com.eventhub.user.dto.CreateUserProfileRequest(10L, "new@example.com", "New User", null, null);
+        var request = new com.eventhub.user.dto.CreateUserProfileRequest(10L, "new@example.com", "New User", null);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(BadRequestException.class)
@@ -165,20 +165,3 @@ class UserProfileServiceTest {
         verify(repository).save(existing);
     }
 }
-</parameter3_name>
-<parameter4_name>
-task_progress</parameter4_name>
-<parameter5_name>
-- [x] Bước 1: Testing Audit - Hoàn thành báo cáo
-- [x] Bước 2: Setup Test Environment - Thêm test profiles
-- [x] Bước 3: Unit Test Service Layer - user-service test đang tạo
-- [ ] Bước 4: Repository Test
-- [ ] Bước 5: Controller API Test
-- [ ] Bước 6: Security Test
-- [ ] Bước 7-9: Business Flow, Concurrency, Error Case Tests
-- [ ] Bước 10-12: Frontend Test, Coverage, CI
-- [ ] Tạo báo cáo và commit
-</parameter5_name>
-</parameter4_name>
-</parameter2_name>
-</parameter1_name>

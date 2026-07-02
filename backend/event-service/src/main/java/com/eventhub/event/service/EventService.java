@@ -88,6 +88,7 @@ public class EventService {
         mapper.update(event, request);
         if (request.totalTickets() != null) {
             event.setAvailableTickets(request.totalTickets() - reservedTickets);
+            validateTicketCounts(request.totalTickets(), event.getAvailableTickets());
         }
         if (event.getStatus() == EventStatus.PUBLISHED) {
             validatePublishable(event);
